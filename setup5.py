@@ -1,78 +1,76 @@
+import os
 import torch
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
-from time import time
-from colorama import Fore, Style
-from accelerate import infer_auto_device_map, dispatch_model
 import deepspeed
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# Configuración del modelo
-model_id = "meta-llama/Llama-3.2-3B-Instruct"
-# model_id = "meta-llama/Llama-3.3-70B-Instruct"
+def setup_distributed():
+    """
+    Configura el entorno distribuido para PyTorch y DeepSpeed.
+    """
+    if not torch.distributed.is_initialized():
+        # Determinar cuántas GPUs están disponibles
+        local_rank = int(os.getenv("LOCAL_RANK", 0))
+        world_size = int(os.getenv("WORLD_SIZE", 1))
+        rank = int(os.getenv("RANK", 0))
+        
+        # Inicializar el proceso distribuido
+        torch.distributed.init_process_group(
+            backend="nccl",  # Utiliza NCCL para GPUs
+            init_method="env://",
+            world_size=world_size,
+            rank=rank
+        )
+        torch.cuda.set_device(local_rank)
+        print(f"Proceso inicializado: rank={rank}, local_rank={local_rank}, world_size={world_size}")
 
 def setup_model():
-    print(f"{Fore.GREEN}Inicializando el modelo en múltiples GPUs...{Style.RESET_ALL}")
+    """
+    Carga el modelo y lo inicializa con DeepSpeed para múltiples GPUs.
+    """
+    # Nombre del modelo (puedes usar cualquier modelo compatible con Transformers)
+    model_name = "EleutherAI/gpt-neo-125M"
 
-    # Cargar el tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    # Cargar el modelo y el tokenizador
+    print("Cargando el modelo y el tokenizador...")
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    # Cargar el modelo completamente en memoria primero
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",  # Inicialización automática para múltiples GPUs
-        low_cpu_mem_usage=True
-    )
+    # Configuración de DeepSpeed
+    ds_config = {
+        "replace_method": "auto",
+        "tensor_parallel": {
+            "tp_size": torch.cuda.device_count()  # Número de GPUs disponibles
+        },
+        "quantize": {
+            "enabled": True,
+            "bits": 8
+        }
+    }
 
-    # Optimización con DeepSpeed
+    # Inicializar el modelo con DeepSpeed
+    print("Inicializando el modelo con DeepSpeed...")
     model = deepspeed.init_inference(
-        model,
-        dtype=torch.bfloat16,
-        mp_size=torch.cuda.device_count(),  # Número de GPUs disponibles
-        replace_method="auto",
-    )
-
-    # Crear el pipeline con el modelo optimizado
-    pipe = pipeline(
-        "text-generation",
         model=model,
-        tokenizer=tokenizer,
-        device_map="auto",
-        torch_dtype=torch.bfloat16,
-        pad_token_id=128001,
+        config=ds_config,
+        mp_size=torch.cuda.device_count()
     )
 
-    return pipe, tokenizer
+    return model, tokenizer
 
-pipe, tokenizer = setup_model()
+def main():
+    # Configura el entorno distribuido
+    setup_distributed()
 
-# Leer contenido del archivo .txt
-file_path = "archivo.txt"  # Nombre del archivo en la raíz
-with open(file_path, "r", encoding="utf-8") as file:
-    file_content = file.read()
+    # Carga y configura el modelo con DeepSpeed
+    model, tokenizer = setup_model()
 
-# Crear mensajes con el contenido del archivo
-messages = [
-    {"role": "system", "content": "You are a chatbot that summarizes and answers questions about documents."},
-    {"role": "user", "content": f"The document is as follows:\n{file_content}\n\nWhat is this document about?"},
-]
+    # Prueba básica para generar texto
+    prompt = "DeepSpeed es increíble para"
+    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
 
-# Medir el tiempo de generación
-start_time = time()
-outputs = pipe(
-    messages,
-    max_new_tokens=1024,  # Ajusta según sea necesario
-)
-end_time = time()
+    print("Generando texto...")
+    outputs = model.generate(inputs.input_ids, max_length=50)
+    print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 
-# Extraer la respuesta del asistente
-assistant_content = outputs[0]["generated_text"]
-
-# Contar los tokens en la respuesta
-token_count = len(tokenizer.encode(assistant_content))
-
-# Imprimir solo la respuesta relevante
-print(assistant_content)
-
-# Imprimir tiempo y tokens en color verde
-print(f"{Fore.GREEN}Tiempo de Respuesta: {end_time - start_time:.3f} segundos{Style.RESET_ALL}")
-print(f"{Fore.GREEN}Tokens generados: {token_count}{Style.RESET_ALL}")
+if __name__ == "__main__":
+    main()
