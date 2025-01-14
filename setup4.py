@@ -22,7 +22,7 @@ with open(file_path, "r", encoding="utf-8") as file:
 # Crear el mensaje de entrada
 prompt = (
     "You are a chatbot that summarizes and answers questions about documents.\n"
-    f"The document is as follows:\n{file_content}\n\nWhat is this document about?"
+    f"The document is as follows:\n{file_content}\n\n in extensive answer please what is this document about?"
 )
 
 # Medir el tiempo de generación
