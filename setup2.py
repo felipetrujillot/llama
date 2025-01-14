@@ -24,7 +24,7 @@ messages.append({"role": "user", "content": user_input})
 # Generar respuesta con el modelo
 response = pipe(
     [{"role": msg["role"], "content": msg["content"]} for msg in messages],
-    max_new_tokens=256,
+    max_new_tokens=9999999,
 )
 
 # Obtener el texto generado
