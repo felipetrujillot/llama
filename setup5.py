@@ -1,53 +1,38 @@
-import torch
 import deepspeed
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 def setup_model():
-    """
-    Configura el modelo y lo inicializa con DeepSpeed para utilizar múltiples GPUs.
-    """
-    print("Inicializando el modelo en múltiples GPUs...")
-
-    # Cargar modelo y tokenizer
-    print("Cargando el modelo y el tokenizador...")
-    model_name = "EleutherAI/gpt-neo-125M"  # Reemplaza con el modelo que estés usando
+    model_name = "EleutherAI/gpt-neo-125M"  # Cambia al modelo que estés usando
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name)
 
     # Configuración de DeepSpeed
     ds_config = {
-        "replace_method": "auto",
+        "replace_with_kernel_inject": True,
         "tensor_parallel": {
-            "tp_size": torch.cuda.device_count()  # Número de GPUs disponibles
+            "tp_size": 4  # Número de GPUs disponibles
         }
     }
 
-    # Inicializar el modelo con DeepSpeed
-    print("Inicializando el modelo con DeepSpeed...")
     model = deepspeed.init_inference(
-        model=model,
+        model,
         config=ds_config,
-        mp_size=torch.cuda.device_count()
+        dtype=torch.float16  # Ajusta según lo necesario
     )
-
     return model, tokenizer
 
 def main():
-    """
-    Punto de entrada principal para inicializar y ejecutar el modelo.
-    """
     try:
-        # Inicializar modelo y tokenizer
+        print("Inicializando el modelo y el tokenizador...")
         model, tokenizer = setup_model()
-        
-        # Prueba básica de generación de texto
-        prompt = "DeepSpeed es una herramienta poderosa para"
-        inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
-        outputs = model.generate(**inputs, max_length=50)
-        print("\nResultado generado:\n", tokenizer.decode(outputs[0], skip_special_tokens=True))
 
+        # Generación de ejemplo
+        prompt = "Hello, world! This is an example of"
+        inputs = tokenizer(prompt, return_tensors="pt")
+        outputs = model.generate(**inputs, max_length=50)
+        print("Resultado generado:", tokenizer.decode(outputs[0]))
     except Exception as e:
-        print("Error durante la inicialización o ejecución del modelo:", e)
+        print("Error durante la inicialización o ejecución del modelo:", str(e))
 
 if __name__ == "__main__":
     main()
