@@ -3,6 +3,7 @@ from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 from time import time
 from colorama import Fore, Style
 from accelerate import infer_auto_device_map, dispatch_model
+import deepspeed
 
 # Configuración del modelo
 model_id = "meta-llama/Llama-3.2-3B-Instruct"
@@ -18,22 +19,24 @@ def setup_model():
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=torch.bfloat16,
-        device_map="auto",  # Inicialización automática para una sola GPU
-        low_cpu_mem_usage=True  # Optimización de memoria al cargar
+        device_map="auto",  # Inicialización automática para múltiples GPUs
+        low_cpu_mem_usage=True
     )
 
-    # Generar el mapa de dispositivos automáticamente
-    device_map = infer_auto_device_map(model)
+    # Optimización con DeepSpeed
+    model = deepspeed.init_inference(
+        model,
+        dtype=torch.bfloat16,
+        mp_size=torch.cuda.device_count(),  # Número de GPUs disponibles
+        replace_method="auto",
+    )
 
-    # Redistribuir el modelo entre múltiples GPUs
-    model = dispatch_model(model, device_map=device_map)
-
-    # Crear el pipeline con el modelo distribuido
+    # Crear el pipeline con el modelo optimizado
     pipe = pipeline(
         "text-generation",
         model=model,
         tokenizer=tokenizer,
-        device_map=device_map,
+        device_map="auto",
         torch_dtype=torch.bfloat16,
         pad_token_id=128001,
     )
