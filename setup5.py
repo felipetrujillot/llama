@@ -2,7 +2,7 @@ import torch
 from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 from time import time
 from colorama import Fore, Style
-from accelerate import infer_auto_device_map, init_empty_weights, dispatch_model
+from accelerate import infer_auto_device_map, dispatch_model
 
 # Configuración del modelo
 model_id = "meta-llama/Llama-3.2-3B-Instruct"
@@ -14,14 +14,18 @@ def setup_model():
     # Cargar el tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-    # Inicializar pesos en vacío para optimización de memoria
-    with init_empty_weights():
-        model = AutoModelForCausalLM.from_pretrained(model_id)
+    # Cargar el modelo completamente en memoria primero
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",  # Inicialización automática para una sola GPU
+        low_cpu_mem_usage=True  # Optimización de memoria al cargar
+    )
 
-    # Configurar el mapa de dispositivos automáticamente
-    device_map = infer_auto_device_map(model, dtype=torch.bfloat16)
+    # Generar el mapa de dispositivos automáticamente
+    device_map = infer_auto_device_map(model)
 
-    # Distribuir el modelo en múltiples GPUs
+    # Redistribuir el modelo entre múltiples GPUs
     model = dispatch_model(model, device_map=device_map)
 
     # Crear el pipeline con el modelo distribuido
@@ -53,7 +57,7 @@ messages = [
 start_time = time()
 outputs = pipe(
     messages,
-    max_new_tokens=1024,  # Asegúrate de ajustar según sea necesario
+    max_new_tokens=1024,  # Ajusta según sea necesario
 )
 end_time = time()
 
