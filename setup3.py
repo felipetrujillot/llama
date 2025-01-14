@@ -29,7 +29,7 @@ messages = [
 start_time = time()
 outputs = pipe(
     messages,
-    max_new_tokens=10000,
+    max_new_tokens=9999999,
 )
 end_time = time()
 
@@ -43,5 +43,5 @@ token_count = len(tokenizer.encode(assistant_content))
 print(assistant_content)
 
 # Imprimir tiempo y tokens en color verde
-print(f"{Fore.GREEN}Tiempo de generación: {end_time - start_time:.3f} segundos{Style.RESET_ALL}")
+print(f"{Fore.GREEN}Tiempo de Respuesta: {end_time - start_time:.3f} segundos{Style.RESET_ALL}")
 print(f"{Fore.GREEN}Tokens generados: {token_count}{Style.RESET_ALL}")
