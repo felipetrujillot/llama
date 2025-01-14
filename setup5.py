@@ -5,7 +5,8 @@ from colorama import Fore, Style
 import deepspeed
 
 # Configuración del modelo
-model_id = "meta-llama/Llama-3.2-3B-Instruct"  # Ajusta según tu modelo
+#model_id = "meta-llama/Llama-3.2-3B-Instruct"  # Ajusta según tu modelo
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 
 # Configuración de DeepSpeed
