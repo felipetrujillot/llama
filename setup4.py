@@ -25,20 +25,23 @@ prompt = (
     f"The document is as follows:\n{file_content}\n\nWhat is this document about?"
 )
 
-# Medir el tiempo de inicio de generación
+# Medir el tiempo antes de enviar el prompt
 start_time = time()
-# Usamos `generate` para medir el tiempo inicial del token.
+
+# Generación de tokens con medida intermedia
 outputs = pipe(
     prompt,
     max_new_tokens=9999999,  # Límite razonable
-    return_full_text=False,  # Solo la respuesta generada
+    return_full_text=False,  # Solo respuesta generada
 )
+
+# Registrar el tiempo de inicio de generación (primer token generado)
 generation_start_time = time()
 
-# Extraer la respuesta generada
+# Extraer el texto generado
 assistant_content = outputs[0]["generated_text"]
 
-# Medir tiempo total al finalizar
+# Registrar el tiempo total de generación
 end_time = time()
 
 # Contar los tokens en la respuesta
@@ -47,7 +50,7 @@ token_count = len(tokenizer.encode(assistant_content))
 # Imprimir solo la respuesta relevante
 print(assistant_content)
 
-# Imprimir tiempos y tokens en color verde
+# Imprimir tiempos y tokens
 print(f"{Fore.GREEN}Tiempo para comenzar a generar: {generation_start_time - start_time:.3f} segundos{Style.RESET_ALL}")
 print(f"{Fore.GREEN}Tiempo total de respuesta: {end_time - start_time:.3f} segundos{Style.RESET_ALL}")
 print(f"{Fore.GREEN}Tokens generados: {token_count}{Style.RESET_ALL}")
