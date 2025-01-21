@@ -1,10 +1,15 @@
 {
+  "inference": {
+    "enabled": true
+  },
   "train_batch_size": 1,
   "steps_per_print": 1,
   "gradient_accumulation_steps": 1,
-  "fp16": {
+
+  "bf16": {
     "enabled": true
   },
+
   "zero_optimization": {
     "stage": 3,
     "offload_optimizer": {
@@ -16,11 +21,13 @@
       "pin_memory": false
     }
   },
+
   "activation_checkpointing": {
     "partition_activations": true,
     "contiguous_memory_optimization": true,
     "num_checkpoints": 1
   },
+
   "cpu_offload": {
     "enabled": true
   }
