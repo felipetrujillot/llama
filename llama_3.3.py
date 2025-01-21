@@ -2,6 +2,7 @@ import transformers
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from accelerate import Accelerator
+import deepspeed
 
 # Establece el modelo y la configuración de DeepSpeed
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
@@ -13,9 +14,11 @@ accelerator = Accelerator()
 # Carga el modelo y el tokenizer
 model = AutoModelForCausalLM.from_pretrained(model_id, 
                                             torch_dtype=torch.bfloat16, 
-                                            device_map="auto", 
-                                            deepspeed=deepspeed_config)
+                                            device_map="auto")
 tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+# Inicia DeepSpeed
+model = deepspeed.initialize(model=model, config_params=deepspeed_config)[0]
 
 # Configura el pipeline de transformers
 pipe = transformers.pipeline(
