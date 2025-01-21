@@ -1,87 +1,81 @@
-import os
+import time
 import torch
-import deepspeed
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-
-##############################################################################
-# 1) CONFIGURAR AMBIENTE DISTRIBUIDO “SIMPLE” (1 GPU)
-##############################################################################
-os.environ["RANK"] = "0"
-os.environ["LOCAL_RANK"] = "0"
-os.environ["WORLD_SIZE"] = "1"
-os.environ["MASTER_ADDR"] = "127.0.0.1"
-os.environ["MASTER_PORT"] = "29500"
-
-# Evita que DeepSpeed busque MPI
-deepspeed.init_distributed(dist_backend="nccl", auto_mpi_discovery=False)
-
-##############################################################################
-# 2) CARGAR MODELO Y TOKENIZER DESDE HUGGING FACE (EN CPU)
-##############################################################################
-model_id = "meta-llama/Llama-3.3-70B-Instruct"
-dtype = torch.bfloat16  # O torch.float16 si tu GPU no maneja bfloat16 o te da OOM
-
-print("Cargando modelo en CPU...")
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    torch_dtype=dtype,
-    device_map=None,        # Asegura que no lo asigne a GPU
-    low_cpu_mem_usage=True
+from colorama import Fore, Style, init
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    pipeline,
+    BitsAndBytesConfig
 )
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+import deepspeed
 
-##############################################################################
-# 3) CONFIGURAR DEEPSPEED PARA INFERENCIA (Zero Offload Stage 3)
-##############################################################################
-ds_inference_config = {
-    "replace_with_kernel_inject": False,  # Evita errores con LLaMA
+init(autoreset=True)
 
-    # 1 sola GPU (sin tensor parallel)
-    "tensor_parallel": {
-        "tp_size": 1
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
+
+# Config de bitsandbytes para 4 bits
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16
+)
+
+# Configuración DeepSpeed (ZeRO Stage 3 + offload a CPU)
+# Ajusta según tus necesidades. Importante "inference=True".
+ds_config = {
+    "train_batch_size": 1,
+    "inference": {
+        "enabled": True,
+        "use_cuda_graph": False
     },
-
-    # bfloat16 o fp16
-    "dtype": "bf16",
-
-    "zero": {
+    "fp16": {
+        "enabled": True
+    },
+    "zero_optimization": {
         "stage": 3,
-        "offload_param": {
-            "device": "cpu",
-            "pin_memory": False
-        }
-    },
-
-    "moe": {},
-    "quant": {
-        "enabled": False
+        "cpu_offload": True,
+        "contiguous_gradients": True,
+        "overlap_comm": True
     }
 }
 
-##############################################################################
-# 4) INICIALIZAR DEEPSPEED EN MODO INFERENCE
-##############################################################################
-print("Inicializando DeepSpeed en modo INFERENCE con Zero Offload Stage 3...")
-ds_engine = deepspeed.init_inference(
-    model=model,
-    **ds_inference_config
+print("Cargando el modelo con DeepSpeed ZeRO Stage 3 + Cuantización 4bits...")
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    quantization_config=bnb_config,
+    torch_dtype=torch.bfloat16,
+    trust_remote_code=True,
+    device_map="auto",
+    deepspeed=ds_config  # <- Parámetro para que transformers use DeepSpeed
 )
 
-##############################################################################
-# 5) CREAR PIPELINE DE TRANSFORMERS
-##############################################################################
+tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+
 pipe = pipeline(
-    task="text-generation",
-    model=ds_engine.module,
+    "text-generation",
+    model=model,
     tokenizer=tokenizer,
-    device=0  # GPU 0
+    torch_dtype=torch.bfloat16,
+    device_map="auto"
 )
 
-##############################################################################
-# 6) EJEMPLO DE INFERENCIA
-##############################################################################
-print("Generando respuesta...")
+print("¡Chat interactivo con Llama-3.3-70B (DeepSpeed ZeRO + 4bits)! Escribe 'exit' o 'quit' para salir.\n")
 
-prompt = "Explain the difference between a pirate and a ninja."
-outputs = pipe(prompt, max_new_tokens=128)
-print(outputs[0]["generated_text"])
+while True:
+    user_input = input("Tú: ")
+    if user_input.strip().lower() in ["exit", "quit"]:
+        print("Saliendo del chat...")
+        break
+
+    start_time = time.time()
+    output = pipe(user_input, max_new_tokens=128)
+    end_time = time.time()
+
+    response = output[0]["generated_text"]
+    print(f"Llama: {response}")
+
+    elapsed = end_time - start_time
+    print(Fore.GREEN + f"Tiempo de respuesta: {elapsed:.2f} seg" + Style.RESET_ALL)
+    print()

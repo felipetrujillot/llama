@@ -1,47 +1,68 @@
 import time
 import torch
 from colorama import Fore, Style, init
-from transformers import pipeline
-
-# Inicializa colorama para imprimir con colores en la terminal
-init(autoreset=True)
-
-# Identificador del modelo en Hugging Face
-model_id = "meta-llama/Llama-3.3-70B-Instruct"
-
-# Crea un pipeline de text-generation
-pipe = pipeline(
-    "text-generation",
-    model=model_id,
-    tokenizer=model_id,
-    torch_dtype=torch.bfloat16,  # Usa torch.float16 si necesitas
-    device_map="auto",           # Permite offload a CPU/GPU automáticamente
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    pipeline,
+    BitsAndBytesConfig
 )
 
-print("¡Chat interactivo con Llama-3.3-70B! Escribe 'exit' o 'quit' para salir.\n")
+init(autoreset=True)
+
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
+
+# Configuración para cuantización en 4 bits
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,                    # Cuantiza el modelo a 4 bits
+    bnb_4bit_use_double_quant=True,       # Activar doble cuantización para ahorrar memoria
+    bnb_4bit_quant_type="nf4",            # Tipo de cuantización (nf4 o fp4)
+    bnb_4bit_compute_dtype=torch.bfloat16 # Para usar bfloat16 en el cómputo
+)
+
+# Control preciso del uso de VRAM y RAM con max_memory
+# Ajusta los valores según tu GPU (48GB) y tu RAM (188GB)
+max_memory = {
+    0: "47GiB",   # GPU ID 0: le reservamos 47 GB para no llegar al límite
+    "cpu": "170GiB"
+}
+
+print("Cargando el modelo en 4 bits con offload automático...")
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    quantization_config=bnb_config,
+    device_map="auto",       # Esto reparte capas GPU/CPU según la memoria disponible
+    max_memory=max_memory,   # Límite de memoria para cada dispositivo
+    torch_dtype=torch.bfloat16,
+    trust_remote_code=True   # Por si el repositorio requiere código adicional
+)
+
+tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+print("Cargando...")
+pipe = pipeline(
+    "text-generation",
+    model=model,
+    tokenizer=tokenizer,
+    torch_dtype=torch.bfloat16,
+    device_map="auto"
+)
+
+print("¡Chat interactivo con Llama-3.3-70B en 4 bits! Escribe 'exit' o 'quit' para salir.\n")
 
 while True:
-    # Solicita input del usuario
     user_input = input("Tú: ")
-
-    # Condición de salida
     if user_input.strip().lower() in ["exit", "quit"]:
         print("Saliendo del chat...")
         break
 
-    # Mide el tiempo de generación
     start_time = time.time()
-    # Genera la respuesta con el pipeline
     output = pipe(user_input, max_new_tokens=128)
     end_time = time.time()
 
-    # Extrae la cadena generada
     response = output[0]["generated_text"]
-
-    # Imprime la respuesta del modelo
     print(f"Llama: {response}")
 
-    # Calcula y muestra el tiempo en color verde
     elapsed = end_time - start_time
     print(Fore.GREEN + f"Tiempo de respuesta: {elapsed:.2f} seg" + Style.RESET_ALL)
-    print()  # Salto de línea para separar turnos de chat
+    print()
