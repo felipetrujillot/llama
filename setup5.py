@@ -13,7 +13,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_id)
 ds_config = {
     "replace_with_kernel_inject": True,
     "tensor_parallel": {
-        "tp_size": 4  # Número de GPUs disponibles
+        "tp_size": 1  # Número de GPUs disponibles
     }
 }
 
