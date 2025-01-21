@@ -4,7 +4,8 @@ from time import time
 from colorama import Fore, Style
 
 # Configuración del modelo
-model_id = "meta-llama/Llama-3.2-3B-Instruct"
+#model_id = "meta-llama/Llama-3.2-3B-Instruct"
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 pipe = pipeline(
     "text-generation",
