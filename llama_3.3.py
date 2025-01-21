@@ -13,8 +13,9 @@ pipeline = transformers.pipeline(
     model=model_id,
     model_kwargs={"torch_dtype": torch.bfloat16},
     device_map="auto",
-    config=deepspeed_config,  # Configuración de DeepSpeed
+    config="deepspeed_config.json",  # Ruta local al archivo de configuración
 )
+
 
 messages = [
     {"role": "system", "content": "You are a pirate chatbot who always responds in pirate speak!"},
