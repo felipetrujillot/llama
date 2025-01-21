@@ -1,6 +1,6 @@
 import transformers
 import torch
-
+from transformers import pipeline
 # Establece el modelo y la configuración de DeepSpeed
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
 
