@@ -7,8 +7,10 @@ from transformers import (
     pipeline,
     BitsAndBytesConfig
 )
-import deepspeed
+# Para esta demo no necesitamos hacer `import deepspeed`
+# porque DeepSpeed se configurará desde la CLI y ds_config.json
 
+# Inicializa colorama para colores en la terminal
 init(autoreset=True)
 
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
@@ -21,47 +23,31 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.bfloat16
 )
 
-# Configuración DeepSpeed (ZeRO Stage 3 + offload a CPU)
-# Ajusta según tus necesidades. Importante "inference=True".
-ds_config = {
-    "train_batch_size": 1,
-    "inference": {
-        "enabled": True,
-        "use_cuda_graph": False
-    },
-    "fp16": {
-        "enabled": True
-    },
-    "zero_optimization": {
-        "stage": 3,
-        "cpu_offload": True,
-        "contiguous_gradients": True,
-        "overlap_comm": True
-    }
-}
-
-print("Cargando el modelo con DeepSpeed ZeRO Stage 3 + Cuantización 4bits...")
+print("Cargando el modelo a 4 bits (bitsandbytes) + offload CPU...")
 
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
-    quantization_config=bnb_config,
+    quantization_config=bnb_config,     # Cuantización en 4 bits
     torch_dtype=torch.bfloat16,
     trust_remote_code=True,
-    device_map="auto",
-    deepspeed=ds_config  # <- Parámetro para que transformers use DeepSpeed
+    device_map="auto"                  # Reparto auto en GPU/CPU
+    # NO PASAMOS: deepspeed=...
 )
 
-tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(
+    model_id,
+    trust_remote_code=True
+)
 
 pipe = pipeline(
     "text-generation",
     model=model,
     tokenizer=tokenizer,
     torch_dtype=torch.bfloat16,
-    device_map="auto"
+    device_map="auto"    # El pipeline también se reparte
 )
 
-print("¡Chat interactivo con Llama-3.3-70B (DeepSpeed ZeRO + 4bits)! Escribe 'exit' o 'quit' para salir.\n")
+print("¡Chat interactivo con Llama-3.3-70B (4bits + ZeRO Stage 3)! Escribe 'exit' o 'quit' para salir.\n")
 
 while True:
     user_input = input("Tú: ")
