@@ -22,12 +22,13 @@ deepspeed.init_distributed(dist_backend="nccl", auto_mpi_discovery=False)
 ###############################################################################
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
 deepspeed_config = "deepspeed_config.json"
-dtype = torch.bfloat16  # Cámbialo a float16 si tienes problemas con bfloat16
+dtype = torch.float16  # Cámbialo a float16 si tienes problemas con bfloat16
 
 print("Cargando modelo y tokenizer desde Hugging Face...")
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     torch_dtype=dtype, 
+    device_map=None,           # <-- Asegurarte de no asignarlo a la GPU
     low_cpu_mem_usage=True
 )
 tokenizer = AutoTokenizer.from_pretrained(model_id)
