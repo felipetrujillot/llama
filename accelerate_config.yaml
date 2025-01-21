@@ -1,0 +1,27 @@
+# accelerate_config.yaml
+compute_environment: LOCAL_MACHINE
+distributed_type: DEEPSPEED
+num_processes: 1 # 1 proceso (1 GPU)
+machine_rank: 0
+num_machines: 1
+
+# Elige la precisión mixta (aquí bfloat16)
+mixed_precision: bf16
+
+# Ajustes de DeepSpeed: Zero Offload Stage 3
+deepspeed_config:
+  train_batch_size: 1
+  bf16:
+    enabled: true
+  zero_optimization:
+    stage: 3
+    offload_optimizer:
+      device: cpu
+      pin_memory: false
+    offload_param:
+      device: cpu
+      pin_memory: false
+  # (Opcional) para no saturar logs
+  "steps_per_print": 999999999
+  "gradient_accumulation_steps": 1
+  "disable_allgather": true
