@@ -1,10 +1,9 @@
 {
-  "inference": {
-    "enabled": true
-  },
+  "train_micro_batch_size_per_gpu": 1,
   "train_batch_size": 1,
-  "steps_per_print": 1,
+  "steps_per_print": 999999999,
   "gradient_accumulation_steps": 1,
+  "disable_allgather": true,
 
   "bf16": {
     "enabled": true
@@ -20,15 +19,5 @@
       "device": "cpu",
       "pin_memory": false
     }
-  },
-
-  "activation_checkpointing": {
-    "partition_activations": true,
-    "contiguous_memory_optimization": true,
-    "num_checkpoints": 1
-  },
-
-  "cpu_offload": {
-    "enabled": true
   }
 }
