@@ -4,17 +4,15 @@ num_processes: 1
 machine_rank: 0
 num_machines: 1
 
-mixed_precision: bf16 # o "fp16" si presentas OOM con bfloat16
+mixed_precision: bf16 # o "fp16"
 
 deepspeed_config:
   train_micro_batch_size_per_gpu: 1
   train_batch_size: 1
 
-  # Habilitar bfloat16 en DeepSpeed
   bf16:
     enabled: true
 
-  # Zero Offload Stage 3
   zero_optimization:
     stage: 3
     offload_optimizer:
@@ -24,7 +22,6 @@ deepspeed_config:
       device: cpu
       pin_memory: false
 
-  # Ajustes opcionales para reducir logs y problemas
   steps_per_print: 999999999
   gradient_accumulation_steps: 1
   disable_allgather: true
