@@ -1,5 +1,5 @@
 import torch
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer
 from colorama import init, Fore, Style
 import logging
 
@@ -35,11 +35,17 @@ pipe = pipeline(
     model=MODEL_ID,
     torch_dtype=dtype,
     device=device,
+    # Evitar el uso de `tokenizer` en `pipeline` si no es necesario
 )
 
-# Mensajes iniciales del sistema en español
+# Cargar el tokenizer para obtener `eos_token_id` si es necesario
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+if tokenizer.pad_token_id is None:
+    tokenizer.pad_token_id = tokenizer.eos_token_id
+
+# Definir el prompt inicial (system prompt) en español
 system_prompt = (
-    "Eres Nova, un asistente virtual inteligente creado para proporcionar información útil y perspicaz sobre cualquier tema. "
+    "System: Eres Nova, un asistente virtual inteligente creado para proporcionar información útil y perspicaz sobre cualquier tema. "
     "Siempre respondes en un tono amable y profesional en español."
 )
 
@@ -48,17 +54,19 @@ messages = [
     {"role": "system", "content": system_prompt},
 ]
 
+print(Fore.GREEN + "Hola, soy Nova, tu asistente virtual. ¡Estoy aquí para ayudarte con cualquier pregunta o duda que tengas! Escribe 'salir' para terminar la conversación.")
+
 while True:
     try:
         # Obtener entrada del usuario con color azul
-        user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
+        user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL).strip()
         
         # Salir del chat si el usuario escribe "salir"
-        if user_input.strip().lower() == "salir":
-            print(Fore.GREEN + "Amalia: Gracias por usar mis servicios. ¡Hasta luego!")
+        if user_input.lower() == "salir":
+            print(Fore.GREEN + "Nova: Gracias por usar mis servicios. ¡Hasta luego!")
             break
         
-        if user_input.strip() == "":
+        if user_input == "":
             continue  # Ignorar entradas vacías
         
         # Agregar el mensaje del usuario a los mensajes
@@ -75,7 +83,8 @@ while True:
             temperature=0.7,
             top_p=0.9,
             repetition_penalty=1.2,
-            eos_token_id=tokenizer.eos_token_id if 'tokenizer' in globals() else None,  # Asegura que se detenga correctamente
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id,
         )
         
         # Obtener el texto generado
@@ -86,7 +95,8 @@ while True:
         if "Nova:" in generated_text:
             response_text = generated_text.split("Nova:")[-1].strip()
         else:
-            response_text = generated_text  # Fallback en caso de que "Nova:" no esté presente
+            # Fallback si "Nova:" no está presente
+            response_text = generated_text
         
         # Agregar la respuesta del modelo a los mensajes
         messages.append({"role": "assistant", "content": response_text})
