@@ -1,12 +1,31 @@
 import torch
 from transformers import pipeline
+
 # Configuración del modelo
 model_id = "meta-llama/Llama-3.2-3B-Instruct"
+
+# Determinar el tipo de dato y el dispositivo
+if torch.cuda.is_available():
+    device = 0  # Asigna a la primera GPU
+    capabilities = torch.cuda.get_device_capability(device)
+    major, minor = capabilities
+    if major >= 8:
+        dtype = torch.bfloat16
+        print("Usando torch.bfloat16 para optimizar el rendimiento.")
+    else:
+        dtype = torch.float16
+        print("Usando torch.float16 para optimizar el rendimiento.")
+else:
+    device = -1  # CPU
+    dtype = torch.float32
+    print("CUDA no está disponible. Se usará la CPU.")
+
+# Crear el pipeline con la configuración adecuada
 pipe = pipeline(
     "text-generation",
     model=model_id,
-    torch_dtype=torch.bfloat16,
-    device_map="cuda:0",
+    torch_dtype=dtype,
+    device=device,
 )
 
 # Mensajes iniciales del sistema
@@ -28,14 +47,19 @@ while True:
     # Agregar el mensaje del usuario a los mensajes
     messages.append({"role": "user", "content": user_input})
 
+    # Preparar el prompt concatenando los mensajes
+    prompt = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])
+
     # Generar respuesta con el modelo
     response = pipe(
-        [{"role": msg["role"], "content": msg["content"]} for msg in messages],
+        prompt,
         max_new_tokens=256,
+        do_sample=True,
+        temperature=0.7,
     )
 
     # Obtener el texto generado
-    generated_text = response[0]["generated_text"]
+    generated_text = response[0]["generated_text"].strip()
 
     # Agregar la respuesta del modelo a los mensajes
     messages.append({"role": "assistant", "content": generated_text})
