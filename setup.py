@@ -45,8 +45,8 @@ if tokenizer.pad_token_id is None:
 
 # Definir el prompt inicial (system prompt) en español
 system_prompt = (
-    "System: Eres Nova, un asistente virtual inteligente creado para proporcionar información útil y perspicaz sobre cualquier tema. "
-    "Siempre respondes en un tono amable y profesional en español."
+    "You are Amalia, an intelligent virtual assistant created to provide helpful and insightful information on any topic. "
+    "You always respond in a friendly and professional tone in Spanish."
 )
 
 # Inicializar los mensajes con el prompt del sistema
@@ -54,7 +54,7 @@ messages = [
     {"role": "system", "content": system_prompt},
 ]
 
-print(Fore.GREEN + "Hola, soy Nova, tu asistente virtual. ¡Estoy aquí para ayudarte con cualquier pregunta o duda que tengas! Escribe 'salir' para terminar la conversación.")
+print(Fore.GREEN + "Meta-Llama-3.1-8B-Instruct")
 
 while True:
     try:
@@ -63,7 +63,7 @@ while True:
         
         # Salir del chat si el usuario escribe "salir"
         if user_input.lower() == "salir":
-            print(Fore.GREEN + "Nova: Gracias por usar mis servicios. ¡Hasta luego!")
+            print(Fore.GREEN + "Amalia: Gracias por usar mis servicios. ¡Hasta luego!")
             break
         
         if user_input == "":
