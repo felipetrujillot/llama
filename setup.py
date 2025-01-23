@@ -81,9 +81,9 @@ while True:
         # Generar respuesta con el modelo usando pipeline
         response = pipe(
             prompt,
-            max_new_tokens=9999999999,        # Reducido para evitar respuestas excesivamente largas
+            max_new_tokens=4096,        # Reducido para evitar respuestas excesivamente largas
             do_sample=True,
-            temperature=0.3,           # Reducido para mayor coherencia
+            temperature=0.5,           # Reducido para mayor coherencia
             top_p=0.9,
             repetition_penalty=1.2,
             pad_token_id=tokenizer.eos_token_id,
