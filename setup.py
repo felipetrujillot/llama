@@ -48,8 +48,6 @@ messages = [
     {"role": "system", "content": system_prompt},
 ]
 
-print(Fore.GREEN + "Hola, soy Nova, tu asistente virtual. ¡Estoy aquí para ayudarte con cualquier pregunta o duda que tengas! Escribe 'salir' para terminar la conversación.")
-
 while True:
     try:
         # Obtener entrada del usuario con color azul
@@ -57,7 +55,7 @@ while True:
         
         # Salir del chat si el usuario escribe "salir"
         if user_input.strip().lower() == "salir":
-            print(Fore.GREEN + "Nova: Gracias por usar mis servicios. ¡Hasta luego!")
+            print(Fore.GREEN + "Amalia: Gracias por usar mis servicios. ¡Hasta luego!")
             break
         
         if user_input.strip() == "":
