@@ -81,7 +81,7 @@ while True:
         # Generar respuesta con el modelo usando pipeline
         response = pipe(
             prompt,
-            max_new_tokens=150,        # Reducido para evitar respuestas excesivamente largas
+            max_new_tokens=9999999999,        # Reducido para evitar respuestas excesivamente largas
             do_sample=True,
             temperature=0.3,           # Reducido para mayor coherencia
             top_p=0.9,
