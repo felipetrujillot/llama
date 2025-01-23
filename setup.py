@@ -20,7 +20,7 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     torch_dtype=torch.float16,
-    device_map="cuda"  # Utiliza la GPU disponible
+    device=0  # Utiliza la GPU disponible
 )
 
 # Definir el prompt inicial (system prompt) en español
