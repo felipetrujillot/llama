@@ -2,6 +2,7 @@ import transformers
 import torch
 from colorama import init, Fore, Style
 import logging
+import time  # Importar el módulo time
 
 # Configurar el nivel de logging para transformers a ERROR
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -41,9 +42,10 @@ def get_response(messages):
         elif role == "user":
             prompt += f"Usuario: {content}\n"
         elif role == "assistant":
-            prompt += f" {content}\n"
+            prompt += f"Amalia: {content}\n"  # Asegurarse de mantener el prefijo "Amalia:"
 
-    # Generar la respuesta
+    # Medir el tiempo de generación de la respuesta
+    start_time = time.perf_counter()  # Inicio del contador
     outputs = pipeline(
         prompt,
         max_new_tokens=256,
@@ -51,14 +53,19 @@ def get_response(messages):
         top_p=0.9,
         do_sample=True,
     )
+    end_time = time.perf_counter()  # Fin del contador
+
     generated_text = outputs[0]["generated_text"]
+
+    # Calcular el tiempo transcurrido
+    time_taken = end_time - start_time
 
     # Extraer solo la respuesta del asistente
     response = generated_text[len(prompt):].strip().split("\n")[0]
-    return response
+    return response, time_taken  # Devolver la respuesta y el tiempo
 
 def main():
-    print(Fore.GREEN + "Hola, ¿en qué puedo ayudarte hoy?")
+    print(Fore.GREEN + "Amalia: Hola, ¿en qué puedo ayudarte hoy?")
     messages = [system_message]
 
     while True:
@@ -66,17 +73,18 @@ def main():
             # Obtener entrada del usuario
             user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
             if user_input.lower() in ["salir", "exit", "quit"]:
-                print(Fore.GREEN + "¡Hasta luego!")
+                print(Fore.GREEN + "Amalia: ¡Hasta luego!")
                 break
 
             # Añadir el mensaje del usuario a la conversación
             messages.append({"role": "user", "content": user_input})
 
-            # Obtener respuesta del modelo
-            assistant_response = get_response(messages)
+            # Obtener respuesta del modelo y el tiempo tomado
+            assistant_response, time_taken = get_response(messages)
 
-            # Mostrar la respuesta del asistente
-            print(Fore.GREEN + f"{assistant_response}")
+            # Mostrar la respuesta del asistente con el tiempo tomado
+            print(Fore.GREEN + f"Amalia: {assistant_response} " +
+                  Fore.YELLOW + f"(Tiempo: {time_taken:.2f} segundos)" + Style.RESET_ALL)
 
             # Añadir la respuesta del asistente a la conversación
             messages.append({"role": "assistant", "content": assistant_response})
@@ -86,4 +94,4 @@ def main():
             break
 
 if __name__ == "__main__":
-    main()
+        main()
