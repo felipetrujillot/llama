@@ -42,7 +42,7 @@ def get_response(messages):
         elif role == "user":
             prompt += f"Usuario: {content}\n"
         elif role == "assistant":
-            prompt += f"Amalia: {content}\n"  # Asegurarse de mantener el prefijo "Amalia:"
+            prompt += f"Amalia: {content}\n"  # Mantener el prefijo "Amalia: "
 
     # Medir el tiempo de generación de la respuesta
     start_time = time.perf_counter()  # Inicio del contador
@@ -62,6 +62,12 @@ def get_response(messages):
 
     # Extraer solo la respuesta del asistente
     response = generated_text[len(prompt):].strip().split("\n")[0]
+
+    # Eliminar el prefijo "Amalia: " si está presente
+    amalia_prefix = "Amalia: "
+    if response.startswith(amalia_prefix):
+        response = response[len(amalia_prefix):].strip()
+
     return response, time_taken  # Devolver la respuesta y el tiempo
 
 def main():
@@ -94,4 +100,4 @@ def main():
             break
 
 if __name__ == "__main__":
-        main()
+    main()
