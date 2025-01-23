@@ -52,10 +52,6 @@ def get_response(messages):
     outputs = pipeline(
         prompt,
         max_new_tokens=300,  # Aumenta el límite de tokens para respuestas más completas
-        temperature=0.7,
-        top_p=0.9,
-        do_sample=True,
-        stop=["Usuario:", "Amalia:"],  # Secuencias de parada
     )
     end_time = time.perf_counter()  # Fin del contador
 
