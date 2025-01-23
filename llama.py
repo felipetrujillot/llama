@@ -77,7 +77,7 @@ def main():
     while True:
         try:
             # Obtener entrada del usuario
-            user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
+            user_input = input(Fore.BLUE + "User: " + Style.RESET_ALL)
             if user_input.lower() in ["salir", "exit", "quit"]:
                 print(Fore.GREEN + "Amalia: ¡Hasta luego!")
                 break
