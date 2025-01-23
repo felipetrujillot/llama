@@ -88,7 +88,7 @@ def main():
             # Si no termina con puntuación, considerar la respuesta incompleta
                 print(Fore.YELLOW + "Generando una respuesta más completa..." + Style.RESET_ALL)
                 assistant_response_extra, extra_time = get_response(messages)
-                assistant_response += " " + assistant_response_extra
+                assistant_response = " " + assistant_response_extra
                 time_taken += extra_time
             # Mostrar la respuesta del asistente con el tiempo tomado
             print(Fore.GREEN + f"Amalia: {assistant_response} " +
