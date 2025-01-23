@@ -29,7 +29,7 @@ system_message = {
         "No proporciones traducciones o respuestas en ningún otro idioma."
         "No proporciones respuestas redundantes."
         "No proporciones respuestas incompletas"
-        "Responde lo que te preguntan y no inventes cosas"
+        "No hagas preguntas de seguimiento ni ofrezcas sugerencias adicionales después de responder."
     ),
 }
 
