@@ -48,10 +48,11 @@ def get_response(messages):
     start_time = time.perf_counter()  # Inicio del contador
     outputs = pipeline(
         prompt,
-        max_new_tokens=256,
+        max_new_tokens=512,
         temperature=0.7,
         top_p=0.9,
         do_sample=True,
+        stop=["Usuario:", "Amalia:"], 
     )
     end_time = time.perf_counter()  # Fin del contador
 
@@ -87,7 +88,12 @@ def main():
 
             # Obtener respuesta del modelo y el tiempo tomado
             assistant_response, time_taken = get_response(messages)
-
+            if not assistant_response.endswith(('.', '!', '?')):
+            # Si no termina con puntuación, considerar la respuesta incompleta
+                print(Fore.YELLOW + "Generando una respuesta más completa..." + Style.RESET_ALL)
+                assistant_response_extra, extra_time = get_response(messages)
+                assistant_response += " " + assistant_response_extra
+                time_taken += extra_time
             # Mostrar la respuesta del asistente con el tiempo tomado
             print(Fore.GREEN + f"Amalia: {assistant_response} " +
                   Fore.YELLOW + f"(Tiempo: {time_taken:.2f} segundos)" + Style.RESET_ALL)
