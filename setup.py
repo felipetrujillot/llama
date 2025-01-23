@@ -90,19 +90,17 @@ while True:
         # Obtener el texto generado
         generated_text = response[0]["generated_text"].strip()
         
-        # Extraer la respuesta de Nova
-        # Se asume que la respuesta comienza después de "Nova:"
-        if "Nova:" in generated_text:
-            response_text = generated_text.split("Nova:")[-1].strip()
+        if "Amalia:" in generated_text:
+            response_text = generated_text.split("Amalia:")[-1].strip()
         else:
-            # Fallback si "Nova:" no está presente
+            # Fallback si "Amalia:" no está presente
             response_text = generated_text
         
         # Agregar la respuesta del modelo a los mensajes
         messages.append({"role": "assistant", "content": response_text})
         
         # Mostrar la respuesta con color amarillo
-        print(Fore.YELLOW + "Nova: " + Style.RESET_ALL + response_text)
+        print(Fore.YELLOW + "Amalia: " + Style.RESET_ALL + response_text)
     
     except KeyboardInterrupt:
         print(Fore.GREEN + "\nChat finalizado por el usuario. ¡Hasta luego!")
