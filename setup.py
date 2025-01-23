@@ -1,6 +1,10 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from colorama import init, Fore, Style
+import logging
+
+# Suprimir mensajes de información de transformers
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 # Inicializar colorama
 init(autoreset=True)
@@ -28,7 +32,7 @@ system_prompt = (
 )
 
 # Función para generar respuestas
-def generate_response(user_input, chat_history_ids=None):
+def generate_response(user_input):
     # Formatear la entrada
     input_text = f"{system_prompt}\nUser: {user_input}\nNova:"
     inputs = tokenizer(input_text, return_tensors="pt").to("cuda")
@@ -50,7 +54,6 @@ def generate_response(user_input, chat_history_ids=None):
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     # Extraer la respuesta de Nova
-    # Asumiendo que la respuesta de Nova viene después de "Nova:"
     response = generated_text.split("Nova:")[-1].strip()
 
     return response
@@ -58,17 +61,20 @@ def generate_response(user_input, chat_history_ids=None):
 def main():
     print(Fore.GREEN + "Bienvenido al chat con Nova. Escribe 'salir' para terminar.")
     while True:
-        # Entrada del usuario
-        user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
-        if user_input.lower() == "salir":
-            print(Fore.GREEN + "Chat finalizado. ¡Hasta luego!")
-            break
+        try:
+            # Entrada del usuario
+            user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
+            if user_input.lower() == "salir":
+                print(Fore.GREEN + "Chat finalizado. ¡Hasta luego!")
+                break
 
-        # Generar respuesta
-        response = generate_response(user_input)
+            # Generar respuesta
+            response = generate_response(user_input)
 
-        # Mostrar la respuesta
-        print(Fore.YELLOW + "Nova: " + Style.RESET_ALL + response)
+            # Mostrar la respuesta
+            print(Fore.YELLOW + "Nova: " + Style.RESET_ALL + response)
+        except Exception as e:
+            print(Fore.RED + f"Error: {e}")
 
 if __name__ == "__main__":
     main()
