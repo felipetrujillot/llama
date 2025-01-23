@@ -41,7 +41,7 @@ def get_response(messages):
         elif role == "user":
             prompt += f"Usuario: {content}\n"
         elif role == "assistant":
-            prompt += f"Amalia: {content}\n"
+            prompt += f" {content}\n"
 
     # Generar la respuesta
     outputs = pipeline(
@@ -58,7 +58,7 @@ def get_response(messages):
     return response
 
 def main():
-    print(Fore.GREEN + "Amalia: Hola, ¿en qué puedo ayudarte hoy?")
+    print(Fore.GREEN + "Hola, ¿en qué puedo ayudarte hoy?")
     messages = [system_message]
 
     while True:
@@ -66,7 +66,7 @@ def main():
             # Obtener entrada del usuario
             user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
             if user_input.lower() in ["salir", "exit", "quit"]:
-                print(Fore.GREEN + "Amalia: ¡Hasta luego!")
+                print(Fore.GREEN + "¡Hasta luego!")
                 break
 
             # Añadir el mensaje del usuario a la conversación
@@ -76,7 +76,7 @@ def main():
             assistant_response = get_response(messages)
 
             # Mostrar la respuesta del asistente
-            print(Fore.GREEN + f"Amalia: {assistant_response}")
+            print(Fore.GREEN + f"{assistant_response}")
 
             # Añadir la respuesta del asistente a la conversación
             messages.append({"role": "assistant", "content": assistant_response})
