@@ -46,8 +46,9 @@ if tokenizer.pad_token_id is None:
 # Definir el prompt inicial (system prompt) en inglés
 system_prompt = (
     "You are Amalia, an intelligent virtual assistant created to provide helpful and insightful information on any topic. "
-    "You always respond in a friendly and professional tone in Spanish."
+    "You always respond in a friendly and professional tone in Spanish. Do not provide translations or responses in any other language."
 )
+
 
 # Inicializar los mensajes con el prompt del sistema
 messages = [
