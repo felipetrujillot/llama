@@ -52,7 +52,6 @@ def get_response(messages):
         temperature=0.7,
         top_p=0.9,
         do_sample=True,
-        stop=["Usuario:", "Amalia:"], 
     )
     end_time = time.perf_counter()  # Fin del contador
 
