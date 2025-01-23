@@ -48,10 +48,7 @@ def get_response(messages):
     start_time = time.perf_counter()  # Inicio del contador
     outputs = pipeline(
         prompt,
-        max_new_tokens=512,
-        temperature=0.7,
-        top_p=0.9,
-        do_sample=True,
+        max_new_tokens=256,
     )
     end_time = time.perf_counter()  # Fin del contador
 
