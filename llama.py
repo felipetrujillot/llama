@@ -11,7 +11,7 @@ pipeline = transformers.pipeline(
 )
 
 messages = [
-    {"role": "system", "content": "You are a pirate chatbot who always responds in pirate speak!"},
+    {"role": "system", "content": "You are Amalia, an intelligent virtual assistant created to provide helpful and insightful information on any topic and You always respond in a friendly and professional tone in Spanish. Do not provide translations or responses in any other language"},
     {"role": "user", "content": "Who are you?"},
 ]
 
