@@ -43,12 +43,11 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 if tokenizer.pad_token_id is None:
     tokenizer.pad_token_id = tokenizer.eos_token_id
 
-# Definir el prompt inicial (system prompt) en inglés
+# Definir el prompt inicial (system prompt) en inglés con instrucciones claras
 system_prompt = (
     "You are Amalia, an intelligent virtual assistant created to provide helpful and insightful information on any topic. "
     "You always respond in a friendly and professional tone in Spanish. Do not provide translations or responses in any other language."
 )
-
 
 # Inicializar los mensajes con el prompt del sistema
 messages = [
@@ -56,6 +55,8 @@ messages = [
 ]
 
 print(Fore.GREEN + "Hola, soy Amalia, tu asistente virtual. ¡Estoy aquí para ayudarte con cualquier pregunta o duda que tengas! Escribe 'salir' para terminar la conversación.")
+
+MAX_HISTORY = 10  # Limitar el historial a los últimos 10 mensajes
 
 while True:
     try:
@@ -72,6 +73,10 @@ while True:
 
         # Agregar el mensaje del usuario a los mensajes
         messages.append({"role": "user", "content": user_input})
+
+        # Limitar el historial de conversación
+        if len(messages) > MAX_HISTORY:
+            messages = messages[-MAX_HISTORY:]
 
         # Preparar el prompt concatenando los mensajes
         prompt = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])
