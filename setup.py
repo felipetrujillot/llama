@@ -10,7 +10,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 init(autoreset=True)
 
 # Configuración del modelo
-MODEL_NAME = "huggingface/llama-3.1-8B-Instruct"  # Reemplaza con el nombre correcto si es diferente
+MODEL_NAME = "meta-llama/Llama-3.1-8B-Instruct"  # Reemplaza con el nombre correcto si es diferente
 
 # Cargar el tokenizer y el modelo
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
