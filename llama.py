@@ -1,6 +1,10 @@
 import transformers
 import torch
 from colorama import init, Fore, Style
+import logging
+
+# Configurar el nivel de logging para transformers a ERROR
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 # Inicializar colorama
 init(autoreset=True)
