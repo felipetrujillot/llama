@@ -6,7 +6,7 @@ pipe = pipeline(
     "text-generation",
     model=model_id,
     torch_dtype=torch.bfloat16,
-    device_map="gpu",
+    device_map="cuda:0",
 )
 
 # Mensajes iniciales del sistema
