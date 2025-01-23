@@ -1,5 +1,5 @@
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextGenerationPipeline
+from transformers import pipeline
 from colorama import init, Fore, Style
 import logging
 
@@ -12,77 +12,92 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 # Configuración del modelo
 MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-# Cargar el tokenizer y el modelo
-print(Fore.GREEN + "Cargando el modelo, por favor espera...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+# Determinar el tipo de dato y el dispositivo
+if torch.cuda.is_available():
+    device = 0  # Asigna a la primera GPU
+    capabilities = torch.cuda.get_device_capability(device)
+    major, minor = capabilities
+    if major >= 8:
+        dtype = torch.bfloat16
+        print(Fore.GREEN + "Usando torch.bfloat16 para optimizar el rendimiento.")
+    else:
+        dtype = torch.float16
+        print(Fore.GREEN + "Usando torch.float16 para optimizar el rendimiento.")
+else:
+    device = -1  # CPU
+    dtype = torch.float32
+    print(Fore.RED + "CUDA no está disponible. Se usará la CPU.")
 
-# Configurar el modelo para usar CUDA y torch.float16
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID,
-    torch_dtype=torch.float16,
-    device=0  # Utiliza la GPU disponible
+# Crear el pipeline con la configuración adecuada
+print(Fore.GREEN + "Cargando el modelo, por favor espera...")
+pipe = pipeline(
+    "text-generation",
+    model=MODEL_ID,
+    torch_dtype=dtype,
+    device=device,
 )
 
-# Definir el prompt inicial (system prompt) en español
+# Mensajes iniciales del sistema en español
 system_prompt = (
     "Eres Nova, un asistente virtual inteligente creado para proporcionar información útil y perspicaz sobre cualquier tema. "
     "Siempre respondes en un tono amable y profesional en español."
 )
 
-# Crear una función para generar respuestas
-def generate_response(user_input):
-    # Formatear la entrada combinando el prompt del sistema y la entrada del usuario
-    input_text = f"{system_prompt}\nUsuario: {user_input}\nNova:"
-    
-    # Tokenizar la entrada
-    inputs = tokenizer(input_text, return_tensors="pt").to("cuda")
-    
-    # Generar la respuesta
-    with torch.no_grad():
-        outputs = model.generate(
-            inputs.input_ids,
+# Inicializar los mensajes con el prompt del sistema
+messages = [
+    {"role": "system", "content": system_prompt},
+]
+
+print(Fore.GREEN + "Hola, soy Nova, tu asistente virtual. ¡Estoy aquí para ayudarte con cualquier pregunta o duda que tengas! Escribe 'salir' para terminar la conversación.")
+
+while True:
+    try:
+        # Obtener entrada del usuario con color azul
+        user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
+        
+        # Salir del chat si el usuario escribe "salir"
+        if user_input.strip().lower() == "salir":
+            print(Fore.GREEN + "Nova: Gracias por usar mis servicios. ¡Hasta luego!")
+            break
+        
+        if user_input.strip() == "":
+            continue  # Ignorar entradas vacías
+        
+        # Agregar el mensaje del usuario a los mensajes
+        messages.append({"role": "user", "content": user_input})
+        
+        # Preparar el prompt concatenando los mensajes
+        prompt = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages])
+        
+        # Generar respuesta con el modelo usando pipeline
+        response = pipe(
+            prompt,
             max_new_tokens=256,
+            do_sample=True,
             temperature=0.7,
             top_p=0.9,
             repetition_penalty=1.2,
-            pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.eos_token_id,
-            do_sample=True
+            eos_token_id=tokenizer.eos_token_id if 'tokenizer' in globals() else None,  # Asegura que se detenga correctamente
         )
-    
-    # Decodificar la salida
-    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
-    # Extraer solo la respuesta de Nova
-    # Se asume que la respuesta comienza después de "Nova:"
-    response = generated_text.split("Nova:")[-1].strip()
-    
-    return response
-
-def main():
-    print(Fore.GREEN + "Bienvenido al chat con Nova. Escribe 'salir' para terminar.")
-    while True:
-        try:
-            # Entrada del usuario con color azul
-            user_input = input(Fore.BLUE + "Tú: " + Style.RESET_ALL)
-            if user_input.strip().lower() == "salir":
-                print(Fore.GREEN + "Chat finalizado. ¡Hasta luego!")
-                break
-
-            if user_input.strip() == "":
-                continue  # Ignorar entradas vacías
-
-            # Generar respuesta del asistente
-            response = generate_response(user_input)
-
-            # Mostrar la respuesta con color amarillo
-            print(Fore.YELLOW + "Nova: " + Style.RESET_ALL + response)
         
-        except KeyboardInterrupt:
-            print(Fore.GREEN + "\nChat finalizado por el usuario. ¡Hasta luego!")
-            break
-        except Exception as e:
-            print(Fore.RED + f"Error: {e}")
-
-if __name__ == "__main__":
-    main()
+        # Obtener el texto generado
+        generated_text = response[0]["generated_text"].strip()
+        
+        # Extraer la respuesta de Nova
+        # Se asume que la respuesta comienza después de "Nova:"
+        if "Nova:" in generated_text:
+            response_text = generated_text.split("Nova:")[-1].strip()
+        else:
+            response_text = generated_text  # Fallback en caso de que "Nova:" no esté presente
+        
+        # Agregar la respuesta del modelo a los mensajes
+        messages.append({"role": "assistant", "content": response_text})
+        
+        # Mostrar la respuesta con color amarillo
+        print(Fore.YELLOW + "Nova: " + Style.RESET_ALL + response_text)
+    
+    except KeyboardInterrupt:
+        print(Fore.GREEN + "\nChat finalizado por el usuario. ¡Hasta luego!")
+        break
+    except Exception as e:
+        print(Fore.RED + f"Error: {e}")
