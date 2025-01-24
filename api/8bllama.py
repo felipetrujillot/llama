@@ -23,12 +23,14 @@ model = transformers.AutoModelForCausalLM.from_pretrained(
     device_map="auto",
 )
 
-# Mensaje de sistema inicial
+# Mensaje de sistema inicial actualizado
 system_message = {
     "role": "system",
     "content": (
         "Eres Amalia, una asistente virtual inteligente creada para proporcionar información útil e "
-        "insightful sobre cualquier tema. Siempre respondes en un tono amable y profesional en español. "
+        "insightful sobre cualquier tema. Utiliza el contexto proporcionado para responder a las preguntas del usuario. "
+        "Siempre responde en un tono amable y profesional en español. "
+        "No incluyas el texto del contexto en tus respuestas. "
         "No proporciones traducciones o respuestas en ningún otro idioma. "
         "No proporciones respuestas redundantes. "
         "No proporciones respuestas incompletas. "
@@ -42,7 +44,7 @@ def get_response_streaming(messages, user_query):
     contextos = obtener_contexto(user_query, k=5)  # Puedes ajustar k según tus necesidades
     contexto_relevante = "\n".join(contextos)
     
-    # Crear un prompt con el contexto
+    # Crear un prompt con el contexto delimitado
     prompt = ""
     for message in messages:
         role = message["role"]
@@ -54,8 +56,8 @@ def get_response_streaming(messages, user_query):
         elif role == "assistant":
             prompt += f"Amalia: {content}\n"
     
-    # Incluir el contexto recuperado
-    prompt += f"Contexto relevante:\n{contexto_relevante}\n"
+    # Incluir el contexto recuperado de manera clara
+    prompt += f"\n---\nContexto relevante:\n{contexto_relevante}\n---\n"
     prompt += f"Usuario: {user_query}\nAmalia: "
     
     # Tokenizar el prompt
@@ -115,7 +117,7 @@ def main():
             assistant_response, time_taken = get_response_streaming(messages, user_input)
 
             # Añadir la respuesta del asistente a la conversación
-            messages.append({"role": "assistant", "content": assistant_response})
+            messages.append({"role": "assistant", "content": assistant_response.strip()})
 
         except KeyboardInterrupt:
             print("\n" + Fore.GREEN + "Amalia: ¡Hasta luego!")
@@ -125,4 +127,4 @@ def main():
             continue
 
 if __name__ == "__main__":
-    main()
+        main()

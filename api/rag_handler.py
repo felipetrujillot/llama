@@ -1,8 +1,14 @@
+# rag_handler.py
+
 import os
+import warnings
 from langchain.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader
 from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_chroma import Chroma  # Importación actualizada
 from typing import List
+
+# Ignorar advertencias de deprecación específicas de LangChain
+warnings.filterwarnings("ignore", category=UserWarning, module='langchain')
 
 # Configuración
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"  # Puedes elegir otro modelo de HuggingFace
@@ -38,10 +44,7 @@ def inicializar_vectorstore():
     """
     Inicializa la base de datos vectorial existente o crea una nueva si no existe.
     """
-    if os.path.exists(CHROMA_DB_DIR):
-        vectorstore = Chroma(persist_directory=CHROMA_DB_DIR, embedding_function=embeddings)
-    else:
-        vectorstore = Chroma(persist_directory=CHROMA_DB_DIR, embedding_function=embeddings)
+    vectorstore = Chroma(persist_directory=CHROMA_DB_DIR, embedding_function=embeddings)
     return vectorstore
 
 def agregar_documento_a_vectorstore(ruta_documento: str):
@@ -57,8 +60,15 @@ def agregar_documento_a_vectorstore(ruta_documento: str):
 def obtener_contexto(query: str, k: int = 5) -> List[str]:
     """
     Recupera los k fragmentos más relevantes de la base de datos vectorial para la consulta dada.
+    Ajusta k si es mayor que el número de documentos disponibles.
     """
     vectorstore = inicializar_vectorstore()
+    total_documentos = len(vectorstore)
+    
+    if total_documentos < k:
+        k = total_documentos
+        print(f"Advertencia: Solo hay {total_documentos} documentos disponibles. Ajustando k a {k}.")
+    
     resultados = vectorstore.similarity_search(query, k=k)
     contextos = [doc.page_content for doc in resultados]
     return contextos
