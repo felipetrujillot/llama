@@ -104,13 +104,14 @@ def main():
             if not docs:
                 context = "Lo siento, no encontré información relevante en los documentos cargados."
             else:
+                # Limitar el contexto para evitar respuestas largas con información irrelevante
                 context = "\n".join([doc.page_content for doc in docs])
 
-            # Crear prompt con contexto
+            # Crear prompt con contexto sin etiquetas de usuario adicionales
             prompt = (
                 f"{system_message}\n"
                 f"Contexto del documento:\n{context}\n\n"
-                f"Usuario: {user_input}\n"
+                f"{user_input}\n"
                 f"Amalia:"
             )
 
