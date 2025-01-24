@@ -112,7 +112,6 @@ def main():
                 f"{system_message}\n"
                 f"Contexto del documento:\n{context}\n\n"
                 f"{user_input}\n"
-                f"Amalia:"
             )
 
             # Obtener respuesta del modelo y el tiempo tomado en streaming
