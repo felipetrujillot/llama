@@ -103,7 +103,7 @@ def main():
                 continue
 
             # Recuperar documentos relevantes usando RAG
-            docs = rag.similarity_search(user_input, k=1)
+            docs = rag.similarity_search(user_input, k=0)
             if not docs:
                 context = "Lo siento, no encontré información relevante en los documentos cargados."
             else:
