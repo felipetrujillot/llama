@@ -1,12 +1,12 @@
 # llm_chat.py
 
-import os
 import transformers
 import torch
 from colorama import init, Fore, Style
 import logging
 import time
 import sys
+import os
 from rag_system import RAGSystem
 
 # Configurar el nivel de logging para transformers a ERROR
@@ -90,12 +90,12 @@ def main():
     while True:
         try:
             # Obtener entrada del usuario
-            user_input = input(Fore.BLUE + "User: " + Style.RESET_ALL)
+            user_input = input(Fore.BLUE + "User: " + Style.RESET_ALL).strip()
             if user_input.lower() in ["salir", "exit", "quit"]:
                 print(Fore.GREEN + "Amalia: ¡Hasta luego!" + Style.RESET_ALL)
                 break
 
-            if not user_input.strip():
+            if not user_input:
                 print(Fore.RED + "Por favor, ingresa una pregunta válida." + Style.RESET_ALL)
                 continue
 
@@ -110,7 +110,7 @@ def main():
             prompt = (
                 f"{system_message}\n"
                 f"Contexto del documento:\n{context}\n\n"
-                f"Usuario: {user_input}\n"
+                f"User: {user_input}\n"
                 f"Amalia:"
             )
 
