@@ -110,7 +110,7 @@ def main():
             prompt = (
                 f"{system_message}\n"
                 f"Contexto del documento:\n{context}\n\n"
-                f"User: {user_input}\n"
+                f"Usuario: {user_input}\n"
                 f"Amalia:"
             )
 

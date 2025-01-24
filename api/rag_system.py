@@ -85,7 +85,7 @@ class RAGSystem:
         Guarda el vector store en el disco.
         """
         if self.vector_store:
-            self.vector_store.save_local(path)
+            self.vector_store.save_local(path, allow_dangerous_deserialization=True)
             print(Fore.GREEN + f"Vector store guardado en: {path}" + Style.RESET_ALL)
         else:
             print(Fore.RED + "El vector store no ha sido creado. No se puede guardar." + Style.RESET_ALL)
@@ -95,7 +95,7 @@ class RAGSystem:
         Carga un vector store previamente guardado desde el disco.
         """
         if os.path.exists(path):
-            self.vector_store = FAISS.load_local(path, self.embeddings)
+            self.vector_store = FAISS.load_local(path, self.embeddings, allow_dangerous_deserialization=True)
             print(Fore.GREEN + f"Vector store cargado desde: {path}" + Style.RESET_ALL)
         else:
             print(Fore.RED + f"El archivo '{path}' no existe." + Style.RESET_ALL)
