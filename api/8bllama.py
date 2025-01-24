@@ -1,12 +1,12 @@
-import transformers 
+# llm_chat.py
+
+import transformers
 import torch
 from colorama import init, Fore, Style
 import logging
 import time
 import sys
-
-# Importaciones adicionales para RAG
-from rag_handler import obtener_contexto
+from rag_system import RAGSystem
 
 # Configurar el nivel de logging para transformers a ERROR
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -14,7 +14,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 # Inicializar colorama
 init(autoreset=True)
 
-# Configuración del modelo y tokenizer
+# Configuración del modelo y tokenizer para generación de respuestas
 model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
 model = transformers.AutoModelForCausalLM.from_pretrained(
@@ -23,47 +23,20 @@ model = transformers.AutoModelForCausalLM.from_pretrained(
     device_map="auto",
 )
 
-# Mensaje de sistema inicial actualizado
-system_message = {
-    "role": "system",
-    "content": (
-        "Eres Amalia, una asistente virtual inteligente creada para proporcionar información útil e "
-        "insightful sobre cualquier tema. Utiliza el contexto proporcionado para responder a las preguntas del usuario. "
-        "Siempre responde en un tono amable y profesional en español. "
-        "No incluyas el texto del contexto en tus respuestas. "
-        "No proporciones traducciones o respuestas en ningún otro idioma. "
-        "No proporciones respuestas redundantes. "
-        "No proporciones respuestas incompletas. "
-        "No hagas preguntas de seguimiento ni ofrezcas sugerencias adicionales después de responder."
-    ),
-}
+# Mensaje de sistema inicial
+system_message = (
+    "Eres Amalia, una asistente virtual inteligente creada para proporcionar información útil e "
+    "insightful sobre cualquier tema. Siempre respondes en un tono amable y profesional en español. "
+    "No proporciones traducciones o respuestas en ningún otro idioma. "
+    "No proporciones respuestas redundantes. "
+    "No proporciones respuestas incompletas. "
+    "No hagas preguntas de seguimiento ni ofrezcas sugerencias adicionales después de responder."
+)
 
 # Función para obtener la respuesta del modelo en streaming
-def get_response_streaming(messages, user_query):
-    # Obtener contexto de RAG
-    contextos = obtener_contexto(user_query, k=5)  # Puedes ajustar k según tus necesidades
-    contexto_relevante = "\n".join(contextos)
-    
-    # Crear un prompt con el contexto delimitado
-    prompt = ""
-    for message in messages:
-        role = message["role"]
-        content = message["content"]
-        if role == "system":
-            prompt += f"{content}\n"
-        elif role == "user":
-            prompt += f"Usuario: {content}\n"
-        elif role == "assistant":
-            prompt += f"Amalia: {content}\n"
-    
-    # Incluir el contexto recuperado de manera clara
-    prompt += f"\n---\nContexto relevante:\n{contexto_relevante}\n---\n"
-    prompt += f"Usuario: {user_query}\nAmalia: "
-    
-    # Tokenizar el prompt
+def get_response_streaming(prompt):
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(model.device)
 
-    # Generar tokens
     generation_kwargs = {
         "max_new_tokens": 512,
         "temperature": 0.7,
@@ -80,10 +53,8 @@ def get_response_streaming(messages, user_query):
         output_scores=True,
     )
 
-    # Obtener los nuevos tokens generados
     new_tokens = generated_ids.sequences[0][input_ids.shape[-1]:]
 
-    # Decodificar los tokens uno por uno
     response = ""
     start_time = time.perf_counter()
     for token_id in new_tokens:
@@ -99,32 +70,56 @@ def get_response_streaming(messages, user_query):
 
 def main():
     print(Fore.GREEN + "Amalia: Hola, ¿en qué puedo ayudarte hoy?")
-    messages = [system_message]
+    
+    # Inicializar el sistema RAG
+    rag = RAGSystem()
+
+    # Cargar documentos
+    file_paths = []
+    print(Fore.CYAN + "Introduce las rutas de los documentos PDF o Word separados por comas:")
+    user_files = input(Fore.CYAN + "Documentos: " + Style.RESET_ALL)
+    file_paths = [f.strip() for f in user_files.split(",")]
+
+    documents = rag.load_documents(file_paths)
+    if not documents:
+        print(Fore.RED + "No se cargaron documentos válidos. Saliendo..." + Style.RESET_ALL)
+        sys.exit(1)
+
+    rag.create_vector_store(documents)
 
     while True:
         try:
             # Obtener entrada del usuario
             user_input = input(Fore.BLUE + "User: " + Style.RESET_ALL)
             if user_input.lower() in ["salir", "exit", "quit"]:
-                print(Fore.GREEN + "Amalia: ¡Hasta luego!")
+                print(Fore.GREEN + "Amalia: ¡Hasta luego!" + Style.RESET_ALL)
                 break
 
-            # Añadir el mensaje del usuario a la conversación
-            messages.append({"role": "user", "content": user_input})
+            # Recuperar documentos relevantes usando RAG
+            docs = rag.similarity_search(user_input, k=4)
+            context = "\n".join([doc.page_content for doc in docs])
+
+            # Crear prompt con contexto
+            prompt = (
+                f"{system_message}\n"
+                f"Contexto del documento:\n{context}\n\n"
+                f"Usuario: {user_input}\n"
+                f"Amalia:"
+            )
 
             # Obtener respuesta del modelo y el tiempo tomado en streaming
             print(Fore.GREEN + "Amalia: ", end='', flush=True)
-            assistant_response, time_taken = get_response_streaming(messages, user_input)
-
-            # Añadir la respuesta del asistente a la conversación
-            messages.append({"role": "assistant", "content": assistant_response.strip()})
+            assistant_response, time_taken = get_response_streaming(prompt)
 
         except KeyboardInterrupt:
-            print("\n" + Fore.GREEN + "Amalia: ¡Hasta luego!")
+            print("\n" + Fore.GREEN + "Amalia: ¡Hasta luego!" + Style.RESET_ALL)
             break
         except UnicodeDecodeError:
             print(Fore.RED + "Error de codificación en la entrada. Por favor, intenta de nuevo." + Style.RESET_ALL)
             continue
+        except Exception as e:
+            print(Fore.RED + f"Se produjo un error: {e}" + Style.RESET_ALL)
+            continue
 
 if __name__ == "__main__":
-        main()
+    main()

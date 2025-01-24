@@ -1,84 +1,71 @@
-# rag_handler.py
+# rag_system.py
 
 import os
-import warnings
-from langchain.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader
+import transformers
+import torch
+from colorama import init, Fore, Style
+import logging
+from langchain.document_loaders import PyMuPDFLoader, Docx2txtLoader
+from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
-from langchain_chroma import Chroma  # Importación actualizada
-from typing import List
+from langchain.vectorstores import FAISS
 
-# Ignorar advertencias de deprecación específicas de LangChain
-warnings.filterwarnings("ignore", category=UserWarning, module='langchain')
+class RAGSystem:
+    def __init__(self):
+        # Configurar el nivel de logging para transformers a ERROR
+        logging.getLogger("transformers").setLevel(logging.ERROR)
 
-# Configuración
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"  # Puedes elegir otro modelo de HuggingFace
-CHROMA_DB_DIR = "chroma_db"  # Directorio donde se almacenará la base de datos
+        # Inicializar colorama
+        init(autoreset=True)
 
-# Inicializar el modelo de embeddings
-embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+        # Configuración del modelo de embeddings
+        self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        self.vector_store = None
 
-def cargar_documento(ruta_documento: str):
-    """
-    Carga un documento PDF o Word y lo divide en páginas o secciones.
-    """
-    if ruta_documento.lower().endswith(".pdf"):
-        loader = PyPDFLoader(ruta_documento)
-    elif ruta_documento.lower().endswith((".doc", ".docx")):
-        loader = UnstructuredWordDocumentLoader(ruta_documento)
-    else:
-        raise ValueError("Formato de documento no soportado. Usa PDF o Word.")
-    
-    documentos = loader.load()
-    return documentos
+    def load_documents(self, file_paths):
+        documents = []
+        for file_path in file_paths:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext == ".pdf":
+                loader = PyMuPDFLoader(file_path)
+            elif ext in [".docx", ".doc"]:
+                loader = Docx2txtLoader(file_path)
+            else:
+                print(Fore.RED + f"Formato de archivo no soportado: {file_path}" + Style.RESET_ALL)
+                continue
+            try:
+                loaded = loader.load()
+                documents.extend(loaded)
+                print(Fore.GREEN + f"Documento cargado: {file_path}" + Style.RESET_ALL)
+            except Exception as e:
+                print(Fore.RED + f"Error al cargar {file_path}: {e}" + Style.RESET_ALL)
+        return documents
 
-def crear_vectorstore(documentos: List, persistencia: bool = True):
-    """
-    Crea una base de datos vectorial en ChromaDB a partir de los documentos proporcionados.
-    """
-    vectorstore = Chroma.from_documents(documents=documentos, embedding=embeddings, persist_directory=CHROMA_DB_DIR)
-    if persistencia:
-        vectorstore.persist()
-    return vectorstore
+    def create_vector_store(self, documents):
+        # Dividir los documentos en fragmentos más pequeños
+        text_splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=200)
+        texts = text_splitter.split_documents(documents)
 
-def inicializar_vectorstore():
-    """
-    Inicializa la base de datos vectorial existente o crea una nueva si no existe.
-    """
-    vectorstore = Chroma(persist_directory=CHROMA_DB_DIR, embedding_function=embeddings)
-    return vectorstore
+        # Crear vector store usando FAISS
+        self.vector_store = FAISS.from_documents(texts, self.embeddings)
+        print(Fore.GREEN + "Vector store creado exitosamente." + Style.RESET_ALL)
 
-def agregar_documento_a_vectorstore(ruta_documento: str):
-    """
-    Carga un documento y lo agrega a la base de datos vectorial.
-    """
-    documentos = cargar_documento(ruta_documento)
-    vectorstore = inicializar_vectorstore()
-    vectorstore.add_documents(documents=documentos)
-    vectorstore.persist()
-    print(f"Documento '{ruta_documento}' agregado exitosamente a la base de datos vectorial.")
+    def similarity_search(self, query, k=4):
+        if not self.vector_store:
+            print(Fore.RED + "El vector store no ha sido creado. Ejecuta create_vector_store primero." + Style.RESET_ALL)
+            return []
+        return self.vector_store.similarity_search(query, k=k)
 
-def obtener_contexto(query: str, k: int = 5) -> List[str]:
-    """
-    Recupera los k fragmentos más relevantes de la base de datos vectorial para la consulta dada.
-    Ajusta k si es mayor que el número de documentos disponibles.
-    """
-    vectorstore = inicializar_vectorstore()
-    total_documentos = len(vectorstore)
-    
-    if total_documentos < k:
-        k = total_documentos
-        print(f"Advertencia: Solo hay {total_documentos} documentos disponibles. Ajustando k a {k}.")
-    
-    resultados = vectorstore.similarity_search(query, k=k)
-    contextos = [doc.page_content for doc in resultados]
-    return contextos
+    def save_vector_store(self, path):
+        if self.vector_store:
+            self.vector_store.save_local(path)
+            print(Fore.GREEN + f"Vector store guardado en: {path}" + Style.RESET_ALL)
+        else:
+            print(Fore.RED + "El vector store no ha sido creado. No se puede guardar." + Style.RESET_ALL)
 
-# Script principal para agregar documentos (opcional)
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Agregar documentos a la base de datos vectorial de ChromaDB.")
-    parser.add_argument("ruta_documento", type=str, help="Ruta al documento PDF o Word a agregar.")
-    args = parser.parse_args()
-
-    agregar_documento_a_vectorstore(args.ruta_documento)
+    def load_vector_store(self, path):
+        if os.path.exists(path):
+            self.vector_store = FAISS.load_local(path, self.embeddings)
+            print(Fore.GREEN + f"Vector store cargado desde: {path}" + Style.RESET_ALL)
+        else:
+            print(Fore.RED + f"El archivo {path} no existe." + Style.RESET_ALL)
