@@ -1,5 +1,6 @@
 # llm_chat.py
 
+import os
 import transformers
 import torch
 from colorama import init, Fore, Style
