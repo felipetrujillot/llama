@@ -90,6 +90,7 @@ def main():
         rag.save_vector_store(vector_store_path)
 
     while True:
+        print("#### lopeando #####")
         try:
             # Obtener entrada del usuario
             user_input = input(Fore.BLUE + "User: " + Style.RESET_ALL).strip()
