@@ -103,7 +103,7 @@ def main():
                 continue
 
             # Recuperar documentos relevantes usando RAG
-            docs = rag.similarity_search(user_input, k=0)
+            docs = rag.similarity_search(user_input, k=1)
             if not docs:
                 context = "Lo siento, no encontré información relevante en los documentos cargados."
             else:
@@ -114,7 +114,7 @@ def main():
             prompt = (
                 f"{system_message}\n"
                 f"Contexto del documento:\n{context}\n\n"
-                f"{user_input}\n"
+                # f"{user_input}\n"
             )
 
             # Obtener respuesta del modelo y el tiempo tomado en streaming
