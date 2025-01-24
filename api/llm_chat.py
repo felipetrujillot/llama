@@ -32,6 +32,8 @@ system_message = (
     "No proporciones respuestas redundantes. "
     "No proporciones respuestas incompletas. "
     "No hagas preguntas de seguimiento ni ofrezcas sugerencias adicionales después de responder."
+    "En caso de que el usuario te pida explícitamente formular preguntas resumidas, hazlo, pero sin añadir información adicional que no se te haya pedido." 
+    "Responde solo a lo que el usuario te pregunta." 
 )
 
 # Función para obtener la respuesta del modelo en streaming
