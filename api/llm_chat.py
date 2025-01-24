@@ -69,23 +69,22 @@ def get_response_streaming(prompt):
     return response, time_taken
 
 def main():
-    print(Fore.GREEN + "Amalia: Hola, ¿en qué puedo ayudarte hoy?")
+    print(Fore.GREEN + "Amalia: Hola, ¿en qué puedo ayudarte hoy?" + Style.RESET_ALL)
     
     # Inicializar el sistema RAG
     rag = RAGSystem()
 
-    # Cargar documentos
-    file_paths = []
-    print(Fore.CYAN + "Introduce las rutas de los documentos PDF o Word separados por comas:")
-    user_files = input(Fore.CYAN + "Documentos: " + Style.RESET_ALL)
-    file_paths = [f.strip() for f in user_files.split(",")]
-
-    documents = rag.load_documents(file_paths)
-    if not documents:
-        print(Fore.RED + "No se cargaron documentos válidos. Saliendo..." + Style.RESET_ALL)
-        sys.exit(1)
-
-    rag.create_vector_store(documents)
+    # Cargar el vector store existente o procesar documentos
+    vector_store_path = "faiss_index"
+    if os.path.exists(vector_store_path):
+        rag.load_vector_store(vector_store_path)
+    else:
+        documents = rag.load_documents_from_directory()
+        if not documents:
+            print(Fore.RED + f"No se encontraron documentos en el directorio '{rag.documentos_dir}'. Por favor, agrega documentos y reinicia el script." + Style.RESET_ALL)
+            sys.exit(1)
+        rag.create_vector_store(documents)
+        rag.save_vector_store(vector_store_path)
 
     while True:
         try:
@@ -95,9 +94,16 @@ def main():
                 print(Fore.GREEN + "Amalia: ¡Hasta luego!" + Style.RESET_ALL)
                 break
 
+            if not user_input.strip():
+                print(Fore.RED + "Por favor, ingresa una pregunta válida." + Style.RESET_ALL)
+                continue
+
             # Recuperar documentos relevantes usando RAG
             docs = rag.similarity_search(user_input, k=4)
-            context = "\n".join([doc.page_content for doc in docs])
+            if not docs:
+                context = "Lo siento, no encontré información relevante en los documentos cargados."
+            else:
+                context = "\n".join([doc.page_content for doc in docs])
 
             # Crear prompt con contexto
             prompt = (
