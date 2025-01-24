@@ -1,9 +1,12 @@
-import transformers
+import transformers 
 import torch
 from colorama import init, Fore, Style
 import logging
 import time
 import sys
+
+# Importaciones adicionales para RAG
+from rag_handler import obtener_contexto
 
 # Configurar el nivel de logging para transformers a ERROR
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -34,8 +37,12 @@ system_message = {
 }
 
 # Función para obtener la respuesta del modelo en streaming
-def get_response_streaming(messages):
-    # Unir los mensajes en un solo texto
+def get_response_streaming(messages, user_query):
+    # Obtener contexto de RAG
+    contextos = obtener_contexto(user_query, k=5)  # Puedes ajustar k según tus necesidades
+    contexto_relevante = "\n".join(contextos)
+    
+    # Crear un prompt con el contexto
     prompt = ""
     for message in messages:
         role = message["role"]
@@ -46,11 +53,15 @@ def get_response_streaming(messages):
             prompt += f"Usuario: {content}\n"
         elif role == "assistant":
             prompt += f"Amalia: {content}\n"
-
+    
+    # Incluir el contexto recuperado
+    prompt += f"Contexto relevante:\n{contexto_relevante}\n"
+    prompt += f"Usuario: {user_query}\nAmalia: "
+    
     # Tokenizar el prompt
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(model.device)
 
-    # Generar tokens uno por uno
+    # Generar tokens
     generation_kwargs = {
         "max_new_tokens": 512,
         "temperature": 0.7,
@@ -101,7 +112,7 @@ def main():
 
             # Obtener respuesta del modelo y el tiempo tomado en streaming
             print(Fore.GREEN + "Amalia: ", end='', flush=True)
-            assistant_response, time_taken = get_response_streaming(messages)
+            assistant_response, time_taken = get_response_streaming(messages, user_input)
 
             # Añadir la respuesta del asistente a la conversación
             messages.append({"role": "assistant", "content": assistant_response})
