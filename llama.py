@@ -11,7 +11,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 init(autoreset=True)
 
 # Configuración del modelo
-model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+model_id = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 
 pipeline = transformers.pipeline(
     "text-generation",
