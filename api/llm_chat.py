@@ -16,7 +16,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 init(autoreset=True)
 
 # Configuración del modelo y tokenizer para generación de respuestas
-model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+model_id = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
 model = transformers.AutoModelForCausalLM.from_pretrained(
     model_id,
