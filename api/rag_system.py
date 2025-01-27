@@ -20,7 +20,7 @@ class RAGSystem:
 
         # Configuración del modelo de embeddings
         # self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        self.embeddings = HuggingFaceEmbeddings(model_name="hkunlp/instructor-large")
+        self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         self.vector_store = None
         self.documentos_dir = documentos_dir
 
