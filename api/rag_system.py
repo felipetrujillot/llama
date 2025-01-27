@@ -5,10 +5,10 @@ import transformers
 import torch
 from colorama import init, Fore, Style
 import logging
-from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader
+from langchain.document_loaders import PyMuPDFLoader, Docx2txtLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings  # Import actualizado
+from langchain.vectorstores import FAISS  # Import actualizado
 
 class RAGSystem:
     def __init__(self, documentos_dir="documentos"):
@@ -95,7 +95,7 @@ class RAGSystem:
         Carga un vector store previamente guardado desde el disco.
         """
         if os.path.exists(path):
-            self.vector_store = FAISS.load_local(path, self.embeddings)  # Eliminado allow_dangerous_deserialization=True
+            self.vector_store = FAISS.load_local(path, self.embeddings, allow_dangerous_deserialization=True)
             print(Fore.GREEN + f"Vector store cargado desde: {path}" + Style.RESET_ALL)
         else:
             print(Fore.RED + f"El archivo '{path}' no existe." + Style.RESET_ALL)
