@@ -20,7 +20,7 @@ model_id = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
 tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
 model = transformers.AutoModelForCausalLM.from_pretrained(
     model_id,
-    torch_dtype=torch.bfloat16,
+    torch_dtype=torch.float16,  # Cambiado de bfloat16 a float16
     device_map="auto",
 )
 
