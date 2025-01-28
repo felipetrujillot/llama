@@ -207,7 +207,7 @@ def main():
         return
 
     # Ruta al documento PDF
-    pdf_path = "ruta/al/documento.pdf"  # Reemplaza con la ruta de tu PDF
+    pdf_path = "/documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
 
     # Extrae el texto del PDF
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
