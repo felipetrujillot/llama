@@ -3,6 +3,7 @@ import torch
 import time
 from colorama import init, Fore, Style
 import PyPDF2
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 def extract_text_from_pdf(pdf_path):
     """
@@ -34,23 +35,43 @@ def extract_text_from_pdf(pdf_path):
 
 def cargar_modelo(model_name):
     """
-    Carga un pipeline de Hugging Face para el modelo Meta-Llama-3.1-8B-Instruct.
+    Carga el modelo y el tokenizador de Hugging Face con prioridad en GPU
+    y offloading mínimo a CPU, utilizando device_map="auto" y max_memory.
 
     Args:
         model_name (str): Nombre del modelo en Hugging Face.
 
     Returns:
-        pipeline: Pipeline de generación de texto.
+        pipeline: Pipeline de generación de texto usando dicho modelo.
     """
     try:
-        # Creamos un pipeline de text-generation con las configuraciones deseadas
-        pipeline = transformers.pipeline(
-            "text-generation",
-            model=model_name,
-            model_kwargs={"torch_dtype": torch.bfloat16},  # Ajuste de tipo de dato
-            device_map="auto"  # Asignación automática de GPU/CPU
+        print(Fore.CYAN + f"Cargando modelo {model_name} con prioridad a GPU..." + Style.RESET_ALL)
+
+        # Carga el tokenizador
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        # Carga del modelo con device_map="auto" y prioridad a GPU.
+        # Ajusta los valores de 'max_memory' según tu hardware:
+        max_memory = {
+            0: "24GiB",    # Asigna hasta 24 GiB de la GPU 0
+            "cpu": "8GiB"  # Permite offloading parcial de hasta 8 GiB en CPU
+        }
+
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.bfloat16, 
+            device_map="auto",
+            max_memory=max_memory,
         )
-        return pipeline
+
+        # Construimos el pipeline con el modelo y el tokenizador
+        pipe = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+        )
+
+        return pipe
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
         return None
@@ -114,12 +135,12 @@ def definir_preguntas():
     ]
     return preguntas
 
-def responder_preguntas(pipeline, texto_documento, preguntas):
+def responder_preguntas(pipeline_llama, texto_documento, preguntas):
     """
     Responde a una lista de preguntas basadas en el texto del documento utilizando el pipeline.
 
     Args:
-        pipeline: Pipeline de generación de texto (modelo) cargado.
+        pipeline_llama: Pipeline de generación de texto (modelo) cargado.
         texto_documento (str): Texto extraído del PDF.
         preguntas (list): Lista de diccionarios con preguntas.
 
@@ -132,7 +153,7 @@ def responder_preguntas(pipeline, texto_documento, preguntas):
     for idx, item in enumerate(preguntas, start=1):
         pregunta = item['pregunta']
 
-        # Mensajes en formato chat (system + user) para el pipeline
+        # Mensajes en formato chat (system + user)
         messages = [
             {
                 "role": "system",
@@ -151,22 +172,19 @@ def responder_preguntas(pipeline, texto_documento, preguntas):
         start_time = time.time()
 
         try:
-            # Generamos la respuesta con el pipeline
-            output = pipeline(
+            # Genera la respuesta con el pipeline
+            output = pipeline_llama(
                 messages,
                 max_new_tokens=256,
-                temperature=0.2,  # Ajusta la creatividad de la respuesta
+                temperature=0.2,   # Ajusta la creatividad de la respuesta
                 top_p=0.95,
                 top_k=50
             )
-            
-            # El pipeline retorna un listado; tomamos la primera salida.
-            # "generated_text" normalmente contiene todo el texto generado.
+
+            # El pipeline retorna una lista de outputs; tomamos la primera salida
             respuesta_completa = output[0]["generated_text"]
 
-            # Puede que quieras procesar la cadena para extraer solo la parte 
-            # posterior a la instrucción, dependiendo de cómo el pipeline
-            # incluya el prompt en la salida.
+            # Ajusta el postprocesado según sea necesario
             respuesta = respuesta_completa.strip()
 
         except Exception as e:
@@ -207,7 +225,7 @@ def main():
     # Nombre del modelo (asegúrate de que el modelo existe en Hugging Face)
     model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-    # Carga el pipeline para el modelo
+    # Carga el pipeline con el modelo, priorizando GPU y offloading mínimo a CPU
     pipeline_llama = cargar_modelo(model_name)
     if pipeline_llama is None:
         return
