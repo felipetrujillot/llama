@@ -1,7 +1,7 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
 import time
+import torch
 from colorama import init, Fore, Style
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import PyPDF2
 
 def extract_text_from_pdf(pdf_path):
@@ -35,20 +35,19 @@ def extract_text_from_pdf(pdf_path):
 def cargar_modelo(model_name):
     """
     Carga el modelo y el tokenizador de Hugging Face.
-
-    Args:
-        model_name (str): Nombre del modelo en Hugging Face.
-
-    Returns:
-        tuple: Modelo y tokenizador cargados.
+    IMPORTANTE: trust_remote_code=True para que se use la lógica interna de Qwen.
     """
     try:
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name,
+            trust_remote_code=True
+        )
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype="auto",
-            device_map="auto"
+            device_map="auto",
+            trust_remote_code=True
         )
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
         return model, tokenizer
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
@@ -57,125 +56,77 @@ def cargar_modelo(model_name):
 def definir_preguntas():
     """
     Define la lista de preguntas a responder.
-
-    Returns:
-        list: Lista de diccionarios con preguntas.
     """
     preguntas = [
-        {
-            'pregunta': 'Hazme un muy breve resumen del documento',
-        },
-        {
-            'pregunta': '¿Cuál es el plazo de implementación?',
-        },
-        {
-            'pregunta': '¿Hay boleta de garantía?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha del periodo de preguntas?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de entrega de propuesta?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de firma del contrato?',
-        },
-        {
-            'pregunta': '¿Cuáles son los límites legales de responsabilidad?',
-        },
-        {
-            'pregunta': '¿Hay multas por incumplimiento?',
-        },
-        {
-            'pregunta': '¿Hay marcas asociadas del RFP?',
-        },
-        {
-            'pregunta': '¿Se exigen certificaciones?',
-        },
-        {
-            'pregunta': '¿Hay gente en modalidad remota, teletrabajo?',
-        },
-        {
-            'pregunta': '¿Se permite subcontratar?',
-        },
-        {
-            'pregunta': '¿Cuál es el formato de pago?',
-        },
-        {
-            'pregunta': '¿Cómo se entrega la propuesta y condiciones?',
-        },
-        {
-            'pregunta': '¿Se aceptan condiciones comerciales?',
-        },
+        {'pregunta': 'Hazme un muy breve resumen del documento'},
+        {'pregunta': '¿Cuál es el plazo de implementación?'},
+        {'pregunta': '¿Hay boleta de garantía?'},
+        {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
+        {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
+        {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
+        {'pregunta': '¿Hay multas por incumplimiento?'},
+        {'pregunta': '¿Hay marcas asociadas del RFP?'},
+        {'pregunta': '¿Se exigen certificaciones?'},
+        {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
+        {'pregunta': '¿Se permite subcontratar?'},
+        {'pregunta': '¿Cuál es el formato de pago?'},
+        {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
+        {'pregunta': '¿Se aceptan condiciones comerciales?'},
     ]
     return preguntas
 
 def responder_preguntas(model, tokenizer, texto_documento, preguntas):
     """
     Responde a una lista de preguntas basadas en el texto del documento.
-
-    Args:
-        model: Modelo de lenguaje.
-        tokenizer: Tokenizador del modelo.
-        texto_documento (str): Texto extraído del PDF.
-        preguntas (list): Lista de diccionarios con preguntas.
-
-    Returns:
-        list: Lista de diccionarios con respuestas y tiempos.
+    Genera un prompt manual, sin plantillas de chat específicas de Qwen.
     """
     respuestas = []
     for idx, item in enumerate(preguntas, start=1):
         pregunta = item['pregunta']
         
-        # Crear la entrada del sistema y el usuario
-        messages = [
-            {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
-            {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
-        ]
-        
-        # Aplicar la plantilla de chat
-        prompt_completo = tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
+        # Construimos un prompt manual
+        prompt = (
+            "Instrucciones: Eres Amalia, creada por Entel. "
+            "Basado en el siguiente documento, responde de manera breve y precisa.\n\n"
+            f"Documento:\n{texto_documento}\n\n"
+            f"Pregunta: {pregunta}\n\n"
+            "Respuesta:"
         )
-        
-        # Tokenizar el prompt
-        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
-        
-        # Medir el tiempo de respuesta
+
+        # Convertimos el prompt en tensores
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+
+        # Medir el tiempo de inferencia
         start_time = time.time()
-        
+
         try:
-            generated_ids = model.generate(
-                **model_inputs,
+            # Generamos la respuesta
+            outputs = model.generate(
+                **inputs,
                 max_new_tokens=256,
                 eos_token_id=tokenizer.eos_token_id,
                 pad_token_id=tokenizer.eos_token_id,
-                temperature=0.2,  # Ajusta la creatividad de la respuesta
-                top_p=0.95,
-                top_k=50
+                do_sample=True,           # Modo sampling
+                temperature=0.6,          # Ajusta según prefieras
+                top_p=0.9,                # Ajusta según prefieras
+                repetition_penalty=1.15,  # Puede ayudar a evitar bucles repetitivos
             )
-            generated_ids = [
-                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-            ]
-            respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+            # Decodificamos la respuesta
+            respuesta = tokenizer.decode(outputs[0], skip_special_tokens=True)
         except Exception as e:
             respuesta = f"Error al generar la respuesta: {e}"
-        
+
         end_time = time.time()
         tiempo_respuesta = end_time - start_time
         
-        # Almacenar la respuesta
         respuestas.append({
             'pregunta': pregunta,
             'respuesta': respuesta,
             'tiempo': tiempo_respuesta
         })
-        
+
         # Mostrar progreso
         print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
     
@@ -184,9 +135,6 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
 def mostrar_respuestas(respuestas):
     """
     Muestra las respuestas junto con los tiempos de respuesta.
-
-    Args:
-        respuestas (list): Lista de diccionarios con respuestas y tiempos.
     """
     for idx, item in enumerate(respuestas, start=1):
         print(Fore.BLUE + f"\n=== Pregunta {idx} ===" + Style.RESET_ALL)
@@ -199,15 +147,13 @@ def main():
     # Inicializa colorama
     init(autoreset=True)
 
-    model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"  # Asegúrate de que este modelo está disponible
+    model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+    pdf_path = "./documentos/amsa.pdf"  # Ajusta la ruta a tu PDF
 
-    # Carga el modelo y el tokenizador
+    # Carga el modelo y el tokenizador (con trust_remote_code)
     model, tokenizer = cargar_modelo(model_name)
     if model is None or tokenizer is None:
         return
-
-    # Ruta al documento PDF
-    pdf_path = "./documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
 
     # Extrae el texto del PDF
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
