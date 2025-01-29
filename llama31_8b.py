@@ -1,16 +1,18 @@
 import os
-# (Opcional) Establece la variable de entorno desde el propio script:
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
-import torch
 import time
+import torch
 import PyPDF2
 from colorama import init, Fore, Style
+
+# Librerías de Hugging Face
 from transformers import (
-    AutoModelForCausalLM,
+    AutoConfig,
     AutoTokenizer,
-    pipeline
+    AutoModelForCausalLM
 )
+
+# Accelerate para offloading
+from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 
 def extract_text_from_pdf(pdf_path):
     """
@@ -42,44 +44,48 @@ def extract_text_from_pdf(pdf_path):
 
 def cargar_modelo(model_name):
     """
-    Carga el modelo y el tokenizador de Hugging Face sin cuantización,
-    priorizando la GPU y haciendo offload mínimo a CPU.
+    Carga el modelo de manera que se permita offloading a CPU si la VRAM se llena,
+    usando accelerate y sin cuantizar (float16).
 
     Args:
-        model_name (str): Nombre del modelo en Hugging Face.
+        model_name (str): Nombre del modelo en Hugging Face (e.g. meta-llama/Meta-Llama-3.1-8B-Instruct).
 
     Returns:
-        pipeline: Pipeline de generación de texto usando dicho modelo.
+        model, tokenizer: Instancias del modelo y tokenizador listos para inferencia.
     """
     try:
-        print(Fore.CYAN + f"Cargando modelo {model_name} con prioridad a GPU..." + Style.RESET_ALL)
+        print(Fore.CYAN + f"Cargando modelo {model_name} con Accelerate (sin cuantizar, float16)..." + Style.RESET_ALL)
 
-        # Ajusta el margen de memoria para la GPU (22 GiB) y algo en CPU (10 GiB)
-        max_memory = {
-            0: "22GiB",  # Deja un pequeño margen (2 GiB) para evitar picos
-            "cpu": "10GiB"
-        }
+        # 1. Cargar la configuración del modelo (vacía)
+        config = AutoConfig.from_pretrained(model_name)
 
+        # 2. Crear un "modelo vacío"
+        with init_empty_weights():
+            model = AutoModelForCausalLM.from_config(config)
+
+        # 3. Cargar pesos con dispatch (offload dinámico)
+        # - device_map="auto": va poniendo capas en GPU y CPU según la memoria.
+        # - offload_folder="./offload_cpu": carpeta para almacenar temporalmente capas en CPU.
+        # - offload_state_dict=True: para liberar la memoria de GPU cuando no se usen capas
+        model = load_checkpoint_and_dispatch(
+            model,
+            checkpoint_folder=model_name,
+            device_map="auto",
+            torch_dtype=torch.float16,
+            offload_folder="./offload_cpu",
+            offload_state_dict=True
+        )
+
+        # 4. Cargar el tokenizador
         tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,   # <--- sin cuantizar, usando FP16
-            device_map="auto",          # <--- Asignación automática GPU/CPU
-            max_memory=max_memory       # <--- Prioridad a la GPU, offload mínimo a CPU
-        )
+        # Configuración extra (opcional)
+        model.eval()  # Modo evaluación
 
-        # Construimos el pipeline
-        pipe = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
-        )
-
-        return pipe
+        return model, tokenizer
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
-        return None
+        return None, None
 
 def definir_preguntas():
     """
@@ -140,17 +146,39 @@ def definir_preguntas():
     ]
     return preguntas
 
-def responder_preguntas(pipeline_llama, texto_documento, preguntas):
+def convertir_chat_en_prompt(messages):
     """
-    Responde a una lista de preguntas basadas en el texto del documento utilizando el pipeline.
+    Convierte una lista de mensajes con roles (system, user, assistant, etc.)
+    a un string que será usado como prompt para el modelo.
 
     Args:
-        pipeline_llama: Pipeline de generación de texto (modelo) cargado.
+        messages (list of dict): Cada dict tiene keys 'role' y 'content'.
+    
+    Returns:
+        str: Prompt unificado.
+    """
+    # Ejemplo simple: concatenamos "[ROLE]: content\n\n"
+    # Puedes personalizarlo según el formateado que el modelo requiera.
+    prompt = ""
+    for msg in messages:
+        role = msg["role"]
+        content = msg["content"]
+        prompt += f"{role.capitalize()}: {content}\n\n"
+    return prompt.strip()
+
+def responder_preguntas(model, tokenizer, texto_documento, preguntas):
+    """
+    Responde a una lista de preguntas basadas en el texto del documento
+    usando 'model.generate' directamente, con un prompt en formato 'chat'.
+
+    Args:
+        model: Modelo de lenguaje (cargado con Accelerate).
+        tokenizer: Tokenizador correspondiente.
         texto_documento (str): Texto extraído del PDF.
         preguntas (list): Lista de diccionarios con preguntas.
 
     Returns:
-        list: Lista de diccionarios con respuestas y tiempos.
+        list: Lista de diccionarios con (pregunta, respuesta, tiempo).
     """
     respuestas = []
     total = len(preguntas)
@@ -158,36 +186,47 @@ def responder_preguntas(pipeline_llama, texto_documento, preguntas):
     for idx, item in enumerate(preguntas, start=1):
         pregunta = item['pregunta']
 
-        # Mensajes en formato chat (system + user)
         messages = [
-            {
-                "role": "system",
-                "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."
-            },
+            {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
             {
                 "role": "user",
                 "content": (
-                    f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\n"
+                    f"Basándote en el siguiente documento, responde la siguiente pregunta.\n\n"
                     f"Documento:\n{texto_documento}\n\n"
                     f"Pregunta: {pregunta}"
                 )
             }
         ]
 
+        # Construimos el prompt
+        prompt = convertir_chat_en_prompt(messages)
+
+        # Tokenizamos
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+
+        # Medimos tiempo de generación
         start_time = time.time()
 
         try:
-            # Genera la respuesta con el pipeline
-            # Reduce un poco max_new_tokens a 128 para evitar picos de memoria
-            output = pipeline_llama(
-                messages,
-                max_new_tokens=128,    # <-- Ajusta según tu disponibilidad de VRAM
-                temperature=0.2,
-                top_p=0.95,
-                top_k=50
-            )
-
-            respuesta_completa = output[0]["generated_text"]
+            with torch.no_grad():
+                output_ids = model.generate(
+                    **inputs,
+                    max_new_tokens=128,  # Ajusta si deseas respuestas más largas/cortas
+                    temperature=0.2,
+                    top_p=0.95,
+                    top_k=50,
+                    eos_token_id=tokenizer.eos_token_id,
+                    pad_token_id=tokenizer.eos_token_id
+                )
+            
+            # Decodificamos la respuesta generada
+            # Nota: El prompt queda incluido al principio, así que es útil recortar
+            # solo la parte nueva si queremos. Pero aquí, para simplificar, decodificamos todo.
+            respuesta_completa = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            
+            # Si quieres eliminar el prompt inicial:
+            # respuesta = respuesta_completa[len(prompt):].strip()
+            # Pero a veces es más fácil decodificar todo y filtrar.
             respuesta = respuesta_completa.strip()
 
         except Exception as e:
@@ -222,35 +261,39 @@ def mostrar_respuestas(respuestas):
         print("-" * 50)
 
 def main():
-    # Inicializa colorama
+    # (Opcional) establecer variable de entorno desde Python (o hazlo desde terminal):
+    # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+    # Inicializa colorama para colores en la consola
     init(autoreset=True)
 
-    # Nombre del modelo (asegúrate de que el modelo existe en Hugging Face)
+    # Nombre del modelo en Hugging Face
     model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-    # Carga el pipeline con el modelo, priorizando GPU y offload mínimo a CPU
-    pipeline_llama = cargar_modelo(model_name)
-    if pipeline_llama is None:
+    # 1. Cargar el modelo y el tokenizador
+    model, tokenizer = cargar_modelo(model_name)
+    if model is None or tokenizer is None:
+        print(Fore.RED + "No se pudo cargar el modelo. Saliendo..." + Style.RESET_ALL)
         return
 
-    # Ruta al documento PDF
-    pdf_path = "./documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
+    # 2. Ruta al documento PDF
+    pdf_path = "./documentos/amsa.pdf"  # Ajusta con la ruta real
 
-    # Extrae el texto del PDF
+    # 3. Extraer el texto del PDF
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
     texto_documento = extract_text_from_pdf(pdf_path)
     if not texto_documento:
         print(Fore.RED + "No se pudo extraer texto del PDF. Terminando el script." + Style.RESET_ALL)
         return
 
-    # Define las preguntas
+    # 4. Definir las preguntas
     preguntas = definir_preguntas()
 
-    # Responde a las preguntas
+    # 5. Responder a las preguntas
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
-    respuestas = responder_preguntas(pipeline_llama, texto_documento, preguntas)
+    respuestas = responder_preguntas(model, tokenizer, texto_documento, preguntas)
 
-    # Muestra las respuestas
+    # 6. Mostrar las respuestas
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
     mostrar_respuestas(respuestas)
 
