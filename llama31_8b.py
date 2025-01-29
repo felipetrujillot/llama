@@ -74,10 +74,8 @@ def configurar_pipeline(model_id):
         pipe = pipeline(
             "text-generation",
             model=model_id,
-            torch_dtype=torch.float16,  # float16 es más compatible y eficiente
-            device_map={"": "cuda:0"},  # Especifica explícitamente la GPU
-            max_length=2048,  # Ajusta según la capacidad del modelo y la GPU
-            truncation=True,  # Trunca el texto si excede la longitud máxima
+            model_kwargs={"torch_dtype": torch.bfloat16},
+            device_map="auto",
         )
         return pipe
     except Exception as e:
@@ -122,7 +120,7 @@ def responder_preguntas(pipe, texto_documento, preguntas):
                 top_p=0.95,
                 top_k=50,
                 eos_token_id=pipe.tokenizer.eos_token_id if hasattr(pipe.tokenizer, 'eos_token_id') else None,
-                pad_token_id=pipe.tokenizer.eos_token_id if hasattr(pipe.tokenizer, 'eos_token_id') else None,
+                pad_token_id=pipe.tokenizer.eos_token_id if hasattr(pipe.tokenizer, 'pad_token_id') else None,
             )
             # Obtener el texto generado y eliminar el prompt
             respuesta_completa = outputs[0]['generated_text']
@@ -167,7 +165,7 @@ def main():
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
     # Identificador del modelo en Hugging Face
-    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"  # Asegúrate de que este modelo exista
+    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"  # Asegúrate de que este modelo exista y sea accesible
 
     # Configura el pipeline
     print(Fore.MAGENTA + "Configurando el pipeline de generación de texto..." + Style.RESET_ALL)
@@ -177,7 +175,7 @@ def main():
         return
 
     # Ruta al documento PDF
-    pdf_path = "./documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
+    pdf_path = "ruta/al/documento.pdf"  # Reemplaza con la ruta de tu PDF
 
     # Extrae el texto del PDF
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
@@ -187,18 +185,18 @@ def main():
         return
 
     # Opcional: Resumir el documento si es demasiado largo
+    # Puedes descomentar esta sección si necesitas resumir el documento
+
+    """
     token_count = len(pipe.tokenizer.encode(texto_documento))
     max_tokens = pipe.tokenizer.model_max_length  # Por ejemplo, 4096 tokens para algunos modelos
     if token_count > max_tokens - 500:  # Reservar espacio para las preguntas y respuestas
         print(Fore.MAGENTA + "Resumiendo el documento para ajustarse a la capacidad del modelo..." + Style.RESET_ALL)
         summarizer = pipeline(
             "summarization",
-            model="facebook/bart-large-cnn",  # Reemplaza con el modelo de resumen que prefieras
-            torch_dtype=torch.float16,
-            device_map={"": "cuda:0"},
-            max_length=1024,
-            min_length=512,
-            truncation=True,
+            model="meta-llama/Meta-Llama-3.1-8B-Instruct",  # Reemplaza con un modelo de resumen si lo deseas
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
         )
         try:
             resumen = summarizer(texto_documento, max_length=1024, min_length=512, do_sample=False)[0]['summary_text']
@@ -207,6 +205,7 @@ def main():
         except Exception as e:
             print(Fore.RED + f"Error al resumir el documento: {e}" + Style.RESET_ALL)
             print(Fore.YELLOW + "Usando el texto completo del documento." + Style.RESET_ALL)
+    """
 
     # Define las preguntas
     preguntas = definir_preguntas()

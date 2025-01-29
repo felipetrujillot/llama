@@ -158,7 +158,7 @@ def main():
     init(autoreset=True)
 
     # Identificador del modelo en Hugging Face
-    model_id = "meta-llama/Llama-3.2-3B-Instruct"  # Reemplaza con el modelo correcto si es necesario
+    model_id = "meta-llama/Llama-3.1-8B-Instruct"  # Reemplaza con el modelo correcto si es necesario
 
     # Configura el pipeline
     print(Fore.MAGENTA + "Configurando el pipeline de generación de texto..." + Style.RESET_ALL)
