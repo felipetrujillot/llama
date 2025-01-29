@@ -1,9 +1,16 @@
-import transformers
+import os
+# (Opcional) Establece la variable de entorno desde el propio script:
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import torch
 import time
-from colorama import init, Fore, Style
 import PyPDF2
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from colorama import init, Fore, Style
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    pipeline
+)
 
 def extract_text_from_pdf(pdf_path):
     """
@@ -35,8 +42,8 @@ def extract_text_from_pdf(pdf_path):
 
 def cargar_modelo(model_name):
     """
-    Carga el modelo y el tokenizador de Hugging Face con prioridad en GPU
-    y offloading mínimo a CPU, utilizando device_map="auto" y max_memory.
+    Carga el modelo y el tokenizador de Hugging Face sin cuantización,
+    priorizando la GPU y haciendo offload mínimo a CPU.
 
     Args:
         model_name (str): Nombre del modelo en Hugging Face.
@@ -47,24 +54,22 @@ def cargar_modelo(model_name):
     try:
         print(Fore.CYAN + f"Cargando modelo {model_name} con prioridad a GPU..." + Style.RESET_ALL)
 
-        # Carga el tokenizador
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-        # Carga del modelo con device_map="auto" y prioridad a GPU.
-        # Ajusta los valores de 'max_memory' según tu hardware:
+        # Ajusta el margen de memoria para la GPU (22 GiB) y algo en CPU (10 GiB)
         max_memory = {
-            0: "24GiB",    # Asigna hasta 24 GiB de la GPU 0
-            "cpu": "8GiB"  # Permite offloading parcial de hasta 8 GiB en CPU
+            0: "22GiB",  # Deja un pequeño margen (2 GiB) para evitar picos
+            "cpu": "10GiB"
         }
+
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
 
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.bfloat16, 
-            device_map="auto",
-            max_memory=max_memory,
+            torch_dtype=torch.float16,   # <--- sin cuantizar, usando FP16
+            device_map="auto",          # <--- Asignación automática GPU/CPU
+            max_memory=max_memory       # <--- Prioridad a la GPU, offload mínimo a CPU
         )
 
-        # Construimos el pipeline con el modelo y el tokenizador
+        # Construimos el pipeline
         pipe = pipeline(
             "text-generation",
             model=model,
@@ -173,18 +178,16 @@ def responder_preguntas(pipeline_llama, texto_documento, preguntas):
 
         try:
             # Genera la respuesta con el pipeline
+            # Reduce un poco max_new_tokens a 128 para evitar picos de memoria
             output = pipeline_llama(
                 messages,
-                max_new_tokens=256,
-                temperature=0.2,   # Ajusta la creatividad de la respuesta
+                max_new_tokens=128,    # <-- Ajusta según tu disponibilidad de VRAM
+                temperature=0.2,
                 top_p=0.95,
                 top_k=50
             )
 
-            # El pipeline retorna una lista de outputs; tomamos la primera salida
             respuesta_completa = output[0]["generated_text"]
-
-            # Ajusta el postprocesado según sea necesario
             respuesta = respuesta_completa.strip()
 
         except Exception as e:
@@ -225,7 +228,7 @@ def main():
     # Nombre del modelo (asegúrate de que el modelo existe en Hugging Face)
     model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-    # Carga el pipeline con el modelo, priorizando GPU y offloading mínimo a CPU
+    # Carga el pipeline con el modelo, priorizando GPU y offload mínimo a CPU
     pipeline_llama = cargar_modelo(model_name)
     if pipeline_llama is None:
         return
