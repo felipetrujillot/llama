@@ -157,7 +157,7 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
                 "- Links: Include `[link text](URL)` to provide additional resources or references.\n"
                 "- Code Blocks: Use triple backticks (` ``` `) for code snippets.\n"
                 "- Tables: Use `|` to organize data into tables for clarity.\n\n"
-                "Context: {texto_documento}\n"
+                "Context: "+texto_documento+"\n"
                 "<|eot_id|><|start_header_id|>user<|end_header_id|>"},
             
             {"role": "user", "content": "User: " + pregunta + "\n<|start_header_id|>assistant<|end_header_id|>"}
