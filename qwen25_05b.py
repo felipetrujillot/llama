@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer 
 import torch
 import time
 from colorama import init, Fore, Style
@@ -7,225 +7,125 @@ import PyPDF2
 def extract_text_from_pdf(pdf_path):
     """
     Extrae el texto de un archivo PDF.
-
-    Args:
-        pdf_path (str): Ruta al archivo PDF.
-
-    Returns:
-        str: Texto extraído del PDF.
     """
     try:
         with open(pdf_path, 'rb') as file:
             reader = PyPDF2.PdfReader(file)
-            text = ""
-            for page_num, page in enumerate(reader.pages, start=1):
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-                else:
-                    print(Fore.YELLOW + f"Advertencia: No se pudo extraer texto de la página {page_num}." + Style.RESET_ALL)
+            text = "".join([page.extract_text() + "\n" for page in reader.pages if page.extract_text()])
         return text
-    except FileNotFoundError:
-        print(Fore.RED + f"Error: El archivo PDF en la ruta '{pdf_path}' no se encontró." + Style.RESET_ALL)
-        return ""
     except Exception as e:
         print(Fore.RED + f"Error al extraer texto del PDF: {e}" + Style.RESET_ALL)
         return ""
 
+def new_prompt(context: str, question: str) -> str:
+    """
+    Genera un prompt formateado para un modelo de lenguaje.
+    """
+    prompt = f"""
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+You are an exceptionally advanced AI assistant, equipped with state-of-the-art capabilities to understand and analyze technical documents. Your role is to deliver responses that are not only accurate and insightful but also enriched with a deep understanding of the context provided by the PDFs.
+
+**Instructions:**
+- Thoroughly analyze the provided context and input.
+- Extract and synthesize key information from the PDFs to provide a comprehensive and informed response.
+- Enhance your responses with detailed explanations, advanced insights, and contextually relevant examples.
+- Present information in a structured format using Markdown where applicable, but prioritize clarity and depth of content over formatting.
+- Address the query with a high level of detail and sophistication, demonstrating a deep understanding of the subject matter.
+- If any critical information is missing or if further context is needed, clearly indicate this in your response.
+
+**Response Guidelines:**
+- **Introduction:** Brief overview of the topic.
+- **Detailed Analysis:** In-depth examination incorporating insights from PDFs.
+- **Contextual Insights:** Connections and highlights from PDFs.
+- **Examples and Explanations:** Specific examples and findings.
+- **Conclusion:** Well-rounded summary.
+
+Context: {context}
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+User: {question}
+<|start_header_id|>assistant<|end_header_id|>
+"""
+    return prompt
+
 def cargar_modelo(model_name):
     """
     Carga el modelo y el tokenizador de Hugging Face.
-
-    Args:
-        model_name (str): Nombre del modelo en Hugging Face.
-
-    Returns:
-        tuple: Modelo y tokenizador cargados.
     """
     try:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype="auto",
-            device_map="auto"
-        )
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         return model, tokenizer
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
         return None, None
 
-def definir_preguntas():
+def responder_pregunta(model, tokenizer, texto_documento, pregunta):
     """
-    Define la lista de preguntas a responder.
-
-    Returns:
-        list: Lista de diccionarios con preguntas.
+    Genera una respuesta a una pregunta basada en un documento.
     """
-    preguntas = [
-        {
-            'pregunta': 'Hazme un muy breve resumen del documento',
-        },
-        {
-            'pregunta': '¿Cuál es el plazo de implementación?',
-        },
-        {
-            'pregunta': '¿Hay boleta de garantía?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha del periodo de preguntas?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de entrega de propuesta?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de firma del contrato?',
-        },
-        {
-            'pregunta': '¿Cuáles son los límites legales de responsabilidad?',
-        },
-        {
-            'pregunta': '¿Hay multas por incumplimiento?',
-        },
-        {
-            'pregunta': '¿Hay marcas asociadas del RFP?',
-        },
-        {
-            'pregunta': '¿Se exigen certificaciones?',
-        },
-        {
-            'pregunta': '¿Hay gente en modalidad remota, teletrabajo?',
-        },
-        {
-            'pregunta': '¿Se permite subcontratar?',
-        },
-        {
-            'pregunta': '¿Cuál es el formato de pago?',
-        },
-        {
-            'pregunta': '¿Cómo se entrega la propuesta y condiciones?',
-        },
-        {
-            'pregunta': '¿Se aceptan condiciones comerciales?',
-        },
-    ]
-    return preguntas
-
-def responder_preguntas(model, tokenizer, texto_documento, preguntas):
-    """
-    Responde a una lista de preguntas basadas en el texto del documento.
-
-    Args:
-        model: Modelo de lenguaje.
-        tokenizer: Tokenizador del modelo.
-        texto_documento (str): Texto extraído del PDF.
-        preguntas (list): Lista de diccionarios con preguntas.
-
-    Returns:
-        list: Lista de diccionarios con respuestas y tiempos.
-    """
-    respuestas = []
-    for idx, item in enumerate(preguntas, start=1):
-        pregunta = item['pregunta']
-        
-        # Crear la entrada del sistema y el usuario
-        messages = [
-            {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
-            {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
-        ]
-        
-        # Aplicar la plantilla de chat
-        prompt_completo = tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-        
-        # Tokenizar el prompt
-        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
-        
-        # Medir el tiempo de respuesta
-        start_time = time.time()
-        
-        try:
-            generated_ids = model.generate(
-                **model_inputs,
-                max_new_tokens=256,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.eos_token_id,
-                temperature=0.2,  # Ajusta la creatividad de la respuesta
-                top_p=0.95,
-                top_k=50
-            )
-            generated_ids = [
-                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-            ]
-            respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-        except Exception as e:
-            respuesta = f"Error al generar la respuesta: {e}"
-        
-        end_time = time.time()
-        tiempo_respuesta = end_time - start_time
-        
-        # Almacenar la respuesta
-        respuestas.append({
-            'pregunta': pregunta,
-            'respuesta': respuesta,
-            'tiempo': tiempo_respuesta
-        })
-        
-        # Mostrar progreso
-        print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
+    prompt_completo = new_prompt(texto_documento, pregunta)
+    model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
     
-    return respuestas
-
-def mostrar_respuestas(respuestas):
-    """
-    Muestra las respuestas junto con los tiempos de respuesta.
-
-    Args:
-        respuestas (list): Lista de diccionarios con respuestas y tiempos.
-    """
-    for idx, item in enumerate(respuestas, start=1):
-        print(Fore.BLUE + f"\n=== Pregunta {idx} ===" + Style.RESET_ALL)
-        print(Fore.YELLOW + f"Pregunta: {item['pregunta']}" + Style.RESET_ALL)
-        print(f"Respuesta: {item['respuesta']}")
-        print(Fore.CYAN + f"Tiempo de respuesta: {item['tiempo']:.2f} segundos" + Style.RESET_ALL)
-        print("-" * 50)
+    start_time = time.time()
+    try:
+        generated_ids = model.generate(
+            **model_inputs,
+            max_new_tokens=256,
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.eos_token_id,
+            temperature=0.2,
+            top_p=0.95,
+            top_k=50
+        )
+        respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+    except Exception as e:
+        respuesta = f"Error al generar la respuesta: {e}"
+    
+    tiempo_respuesta = time.time() - start_time
+    return pregunta, respuesta, tiempo_respuesta
 
 def main():
-    # Inicializa colorama
     init(autoreset=True)
-
-    model_name = "Qwen/Qwen2.5-0.5B-Instruct"  # Asegúrate de que este modelo está disponible
-
-    # Carga el modelo y el tokenizador
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     model, tokenizer = cargar_modelo(model_name)
-    if model is None or tokenizer is None:
+    if not model or not tokenizer:
         return
-
-    # Ruta al documento PDF
-    pdf_path = "./documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
-
-    # Extrae el texto del PDF
+    
+    pdf_path = "./documentos/amsa.pdf"
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
     texto_documento = extract_text_from_pdf(pdf_path)
     if not texto_documento:
-        print(Fore.RED + "No se pudo extraer texto del PDF. Terminando el script." + Style.RESET_ALL)
+        print(Fore.RED + "No se pudo extraer texto del PDF." + Style.RESET_ALL)
         return
-
-    # Define las preguntas
-    preguntas = definir_preguntas()
-
-    # Responde a las preguntas
-    print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
-    respuestas = responder_preguntas(model, tokenizer, texto_documento, preguntas)
-
-    # Muestra las respuestas
-    print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
-    mostrar_respuestas(respuestas)
+    
+    preguntas = [
+        "Hazme un muy breve resumen del documento",
+        "¿Cuál es el plazo de implementación?",
+        "¿Hay boleta de garantía?",
+        "¿Cuándo es la fecha del periodo de preguntas?",
+        "¿Cuándo es la fecha de entrega de propuesta?",
+        "¿Cuándo es la fecha de respuesta de la propuesta?",
+        "¿Cuándo es la fecha de firma del contrato?",
+        "¿Cuáles son los límites legales de responsabilidad?",
+        "¿Hay multas por incumplimiento?",
+        "¿Hay marcas asociadas del RFP?",
+        "¿Se exigen certificaciones?",
+        "¿Hay gente en modalidad remota, teletrabajo?",
+        "¿Se permite subcontratar?",
+        "¿Cuál es el formato de pago?",
+        "¿Cómo se entrega la propuesta y condiciones?",
+        "¿Cuándo es la fecha de entrega de propuesta?",
+        "¿Se aceptan condiciones comerciales?",
+    ]
+    
+    for idx, pregunta in enumerate(preguntas, start=1):
+        print(Fore.YELLOW + f"\nPregunta {idx}: {pregunta}" + Style.RESET_ALL)
+        pregunta, respuesta, tiempo = responder_pregunta(model, tokenizer, texto_documento, pregunta)
+        print(Fore.GREEN + f"Respuesta: {respuesta}" + Style.RESET_ALL)
+        print(Fore.CYAN + f"Tiempo de respuesta: {tiempo:.2f} segundos" + Style.RESET_ALL)
+        print("-" * 50)
 
 if __name__ == "__main__":
     main()
