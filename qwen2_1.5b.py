@@ -1,18 +1,8 @@
-import os
-import time
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-import PyPDF2
+import time
 from colorama import init, Fore, Style
-
-# Librerías de Hugging Face
-from transformers import (
-    AutoConfig,
-    AutoTokenizer,
-    AutoModelForCausalLM
-)
-
-# Accelerate para offloading
-from accelerate import init_empty_weights, load_checkpoint_and_dispatch
+import PyPDF2
 
 def extract_text_from_pdf(pdf_path):
     """
@@ -44,44 +34,21 @@ def extract_text_from_pdf(pdf_path):
 
 def cargar_modelo(model_name):
     """
-    Carga el modelo de manera que se permita offloading a CPU si la VRAM se llena,
-    usando accelerate y sin cuantizar (float16).
+    Carga el modelo y el tokenizador de Hugging Face.
 
     Args:
-        model_name (str): Nombre del modelo en Hugging Face (e.g. meta-llama/Meta-Llama-3.1-8B-Instruct).
+        model_name (str): Nombre del modelo en Hugging Face.
 
     Returns:
-        model, tokenizer: Instancias del modelo y tokenizador listos para inferencia.
+        tuple: Modelo y tokenizador cargados.
     """
     try:
-        print(Fore.CYAN + f"Cargando modelo {model_name} con Accelerate (sin cuantizar, float16)..." + Style.RESET_ALL)
-
-        # 1. Cargar la configuración del modelo (vacía)
-        config = AutoConfig.from_pretrained(model_name)
-
-        # 2. Crear un "modelo vacío"
-        with init_empty_weights():
-            model = AutoModelForCausalLM.from_config(config)
-
-        # 3. Cargar pesos con dispatch (offload dinámico)
-        # - device_map="auto": va poniendo capas en GPU y CPU según la memoria.
-        # - offload_folder="./offload_cpu": carpeta para almacenar temporalmente capas en CPU.
-        # - offload_state_dict=True: para liberar la memoria de GPU cuando no se usen capas
-        model = load_checkpoint_and_dispatch(
-            model,
-            checkpoint_folder=model_name,
-            device_map="auto",
-            torch_dtype=torch.float16,
-            offload_folder="./offload_cpu",
-            offload_state_dict=True
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype="auto",
+            device_map="auto"
         )
-
-        # 4. Cargar el tokenizador
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-        # Configuración extra (opcional)
-        model.eval()  # Modo evaluación
-
         return model, tokenizer
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
@@ -146,46 +113,24 @@ def definir_preguntas():
     ]
     return preguntas
 
-def convertir_chat_en_prompt(messages):
-    """
-    Convierte una lista de mensajes con roles (system, user, assistant, etc.)
-    a un string que será usado como prompt para el modelo.
-
-    Args:
-        messages (list of dict): Cada dict tiene keys 'role' y 'content'.
-    
-    Returns:
-        str: Prompt unificado.
-    """
-    # Ejemplo simple: concatenamos "[ROLE]: content\n\n"
-    # Puedes personalizarlo según el formateado que el modelo requiera.
-    prompt = ""
-    for msg in messages:
-        role = msg["role"]
-        content = msg["content"]
-        prompt += f"{role.capitalize()}: {content}\n\n"
-    return prompt.strip()
-
 def responder_preguntas(model, tokenizer, texto_documento, preguntas):
     """
-    Responde a una lista de preguntas basadas en el texto del documento
-    usando 'model.generate' directamente, con un prompt en formato 'chat'.
+    Responde a una lista de preguntas basadas en el texto del documento.
 
     Args:
-        model: Modelo de lenguaje (cargado con Accelerate).
-        tokenizer: Tokenizador correspondiente.
+        model: Modelo de lenguaje.
+        tokenizer: Tokenizador del modelo.
         texto_documento (str): Texto extraído del PDF.
         preguntas (list): Lista de diccionarios con preguntas.
 
     Returns:
-        list: Lista de diccionarios con (pregunta, respuesta, tiempo).
+        list: Lista de diccionarios con respuestas y tiempos.
     """
     respuestas = []
-    total = len(preguntas)
-
     for idx, item in enumerate(preguntas, start=1):
         pregunta = item['pregunta']
-
+        
+        # Crear la entrada del sistema y el usuario
         messages = [
             {"role": "system", "content": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
                 "You are an exceptionally advanced AI assistant, equipped with state-of-the-art capabilities to understand and analyze technical documents. "
@@ -218,52 +163,50 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
             {"role": "user", "content": "User: " + pregunta + "\n<|start_header_id|>assistant<|end_header_id|>"}
         ]
 
-        # Construimos el prompt
-        prompt = convertir_chat_en_prompt(messages)
-
-        # Tokenizamos
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-
-        # Medimos tiempo de generación
+        
+        # Aplicar la plantilla de chat
+        prompt_completo = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        
+        # Tokenizar el prompt
+        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
+        
+        # Medir el tiempo de respuesta
         start_time = time.time()
-
+        
         try:
-            with torch.no_grad():
-                output_ids = model.generate(
-                    **inputs,
-                    max_new_tokens=128,  # Ajusta si deseas respuestas más largas/cortas
-                    temperature=0.2,
-                    top_p=0.95,
-                    top_k=50,
-                    eos_token_id=tokenizer.eos_token_id,
-                    pad_token_id=tokenizer.eos_token_id
-                )
-            
-            # Decodificamos la respuesta generada
-            # Nota: El prompt queda incluido al principio, así que es útil recortar
-            # solo la parte nueva si queremos. Pero aquí, para simplificar, decodificamos todo.
-            respuesta_completa = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            
-            # Si quieres eliminar el prompt inicial:
-            # respuesta = respuesta_completa[len(prompt):].strip()
-            # Pero a veces es más fácil decodificar todo y filtrar.
-            respuesta = respuesta_completa.strip()
-
+            generated_ids = model.generate(
+                **model_inputs,
+                max_new_tokens=256,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.eos_token_id,
+                temperature=0.2,  # Ajusta la creatividad de la respuesta
+                top_p=0.95,
+                top_k=50
+            )
+            generated_ids = [
+                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+            ]
+            respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
         except Exception as e:
             respuesta = f"Error al generar la respuesta: {e}"
-
+        
         end_time = time.time()
         tiempo_respuesta = end_time - start_time
-
+        
+        # Almacenar la respuesta
         respuestas.append({
             'pregunta': pregunta,
             'respuesta': respuesta,
             'tiempo': tiempo_respuesta
         })
-
-        # Muestra progreso
-        print(Fore.GREEN + f"Pregunta {idx}/{total} procesada." + Style.RESET_ALL)
-
+        
+        # Mostrar progreso
+        print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
+    
     return respuestas
 
 def mostrar_respuestas(respuestas):
@@ -281,39 +224,34 @@ def mostrar_respuestas(respuestas):
         print("-" * 50)
 
 def main():
-    # (Opcional) establecer variable de entorno desde Python (o hazlo desde terminal):
-    # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
-    # Inicializa colorama para colores en la consola
+    # Inicializa colorama
     init(autoreset=True)
 
-    # Nombre del modelo en Hugging Face
-    model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"  # Asegúrate de que este modelo está disponible
 
-    # 1. Cargar el modelo y el tokenizador
+    # Carga el modelo y el tokenizador
     model, tokenizer = cargar_modelo(model_name)
     if model is None or tokenizer is None:
-        print(Fore.RED + "No se pudo cargar el modelo. Saliendo..." + Style.RESET_ALL)
         return
 
-    # 2. Ruta al documento PDF
-    pdf_path = "./documentos/amsa.pdf"  # Ajusta con la ruta real
+    # Ruta al documento PDF
+    pdf_path = "./documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
 
-    # 3. Extraer el texto del PDF
+    # Extrae el texto del PDF
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
     texto_documento = extract_text_from_pdf(pdf_path)
     if not texto_documento:
         print(Fore.RED + "No se pudo extraer texto del PDF. Terminando el script." + Style.RESET_ALL)
         return
 
-    # 4. Definir las preguntas
+    # Define las preguntas
     preguntas = definir_preguntas()
 
-    # 5. Responder a las preguntas
+    # Responde a las preguntas
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
     respuestas = responder_preguntas(model, tokenizer, texto_documento, preguntas)
 
-    # 6. Mostrar las respuestas
+    # Muestra las respuestas
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
     mostrar_respuestas(respuestas)
 
