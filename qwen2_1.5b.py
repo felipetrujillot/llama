@@ -227,7 +227,7 @@ def main():
     # Inicializa colorama
     init(autoreset=True)
 
-    model_name = "Qwen/Qwen2.5-0.5B-Instruct"  # Asegúrate de que este modelo está disponible
+    model_name = "Qwen/Qwen2.5-1.5B-Instruct"  # Asegúrate de que este modelo está disponible
 
     # Carga el modelo y el tokenizador
     model, tokenizer = cargar_modelo(model_name)
