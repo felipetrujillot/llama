@@ -1,19 +1,10 @@
-import torch
+import torch 
 from transformers import pipeline
 import PyPDF2
 import time
 from colorama import init, Fore, Style
 
 def extract_text_from_pdf(pdf_path):
-    """
-    Extrae el texto de un archivo PDF.
-
-    Args:
-        pdf_path (str): Ruta al archivo PDF.
-
-    Returns:
-        str: Texto extraído del PDF.
-    """
     try:
         with open(pdf_path, 'rb') as file:
             reader = PyPDF2.PdfReader(file)
@@ -33,13 +24,7 @@ def extract_text_from_pdf(pdf_path):
         return ""
 
 def definir_preguntas():
-    """
-    Define la lista de preguntas a responder.
-
-    Returns:
-        list: Lista de diccionarios con preguntas.
-    """
-    preguntas = [
+    return [
         {'pregunta': 'Hazme un muy breve resumen del documento'},
         # {'pregunta': '¿Cuál es el plazo de implementación?'},
         # {'pregunta': '¿Hay boleta de garantía?'},
@@ -49,31 +34,17 @@ def definir_preguntas():
         # {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
         # {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
         # {'pregunta': '¿Hay multas por incumplimiento?'},
-        # {'pregunta': '¿Hay marcas asociadas del RFP?'},
         # {'pregunta': '¿Se exigen certificaciones?'},
-        # {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
         # {'pregunta': '¿Se permite subcontratar?'},
         # {'pregunta': '¿Cuál es el formato de pago?'},
-        # {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
-        # {'pregunta': '¿Se aceptan condiciones comerciales?'},
     ]
-    return preguntas
 
 def configurar_pipeline(model_id):
-    """
-    Configura el pipeline de generación de texto.
-
-    Args:
-        model_id (str): Identificador del modelo en Hugging Face.
-
-    Returns:
-        pipeline: Pipeline de generación de texto.
-    """
     try:
         pipe = pipeline(
             "text-generation",
             model=model_id,
-            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+            model_kwargs={"torch_dtype": torch.bfloat16},
             device_map="auto",
         )
         return pipe
@@ -82,69 +53,38 @@ def configurar_pipeline(model_id):
         return None
 
 def responder_preguntas(pipe, texto_documento, preguntas):
-    """
-    Responde a una lista de preguntas basadas en el texto del documento.
-
-    Args:
-        pipe (pipeline): Pipeline de generación de texto.
-        texto_documento (str): Texto extraído del PDF.
-        preguntas (list): Lista de diccionarios con preguntas.
-
-    Returns:
-        list: Lista de diccionarios con respuestas y tiempos.
-    """
     respuestas = []
     for idx, item in enumerate(preguntas, start=1):
         pregunta = item['pregunta']
-
-        # Crear el prompt combinando el mensaje del sistema y la pregunta
-        prompt = [
+        
+        messages = [
             {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
             {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
         ]
-
-        # Medir el tiempo de respuesta
+        
         start_time = time.time()
-
         try:
-            # Generar la respuesta
             outputs = pipe(
-                prompt,
+                messages,
                 max_new_tokens=256,
-                temperature=0.2,  # Baja temperatura para respuestas más determinísticas
-                top_p=0.95,
-                top_k=50,
-                eos_token_id=pipe.tokenizer.eos_token_id if hasattr(pipe.tokenizer, 'eos_token_id') else None,
-                pad_token_id=pipe.tokenizer.eos_token_id if hasattr(pipe.tokenizer, 'eos_token_id') else None,
             )
-            # Obtener el texto generado y eliminar el prompt
-            respuesta_completa = outputs[0]['generated_text']
-            respuesta = respuesta_completa[len(prompt):].strip()
+            
+            if isinstance(outputs, list) and len(outputs) > 0 and 'generated_text' in outputs[0]:
+                respuesta = outputs[0]['generated_text'].strip()
+            else:
+                respuesta = "Error: No se pudo generar una respuesta válida."
         except Exception as e:
             respuesta = f"Error al generar la respuesta: {e}"
 
         end_time = time.time()
         tiempo_respuesta = end_time - start_time
-
-        # Almacenar la respuesta
-        respuestas.append({
-            'pregunta': pregunta,
-            'respuesta': respuesta,
-            'tiempo': tiempo_respuesta
-        })
-
-        # Mostrar progreso
+        
+        respuestas.append({'pregunta': pregunta, 'respuesta': respuesta, 'tiempo': tiempo_respuesta})
         print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
-
+    
     return respuestas
 
 def mostrar_respuestas(respuestas):
-    """
-    Muestra las respuestas junto con los tiempos de respuesta.
-
-    Args:
-        respuestas (list): Lista de diccionarios con respuestas y tiempos.
-    """
     for idx, item in enumerate(respuestas, start=1):
         print(Fore.BLUE + f"\n=== Pregunta {idx} ===" + Style.RESET_ALL)
         print(Fore.YELLOW + f"Pregunta: {item['pregunta']}" + Style.RESET_ALL)
@@ -153,37 +93,24 @@ def mostrar_respuestas(respuestas):
         print("-" * 50)
 
 def main():
-    # Inicializa colorama
     init(autoreset=True)
-
-    # Identificador del modelo en Hugging Face
-    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"  # Reemplaza con el modelo correcto si es necesario
-
-    # Configura el pipeline
+    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+    
     print(Fore.MAGENTA + "Configurando el pipeline de generación de texto..." + Style.RESET_ALL)
     pipe = configurar_pipeline(model_id)
     if pipe is None:
-        print(Fore.RED + "No se pudo configurar el pipeline. Terminando el script." + Style.RESET_ALL)
         return
-
-    # Ruta al documento PDF
-    pdf_path = "./documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
-
-    # Extrae el texto del PDF
+    
+    pdf_path = "./documentos/amsa.pdf"
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
     texto_documento = extract_text_from_pdf(pdf_path)
     if not texto_documento:
-        print(Fore.RED + "No se pudo extraer texto del PDF. Terminando el script." + Style.RESET_ALL)
         return
-
-    # Define las preguntas
+    
     preguntas = definir_preguntas()
-
-    # Responde a las preguntas
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
     respuestas = responder_preguntas(pipe, texto_documento, preguntas)
-
-    # Muestra las respuestas
+    
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
     mostrar_respuestas(respuestas)
 
