@@ -5,15 +5,6 @@ from colorama import init, Fore, Style
 import PyPDF2
 
 def extract_text_from_pdf(pdf_path):
-    """
-    Extrae el texto de un archivo PDF.
-
-    Args:
-        pdf_path (str): Ruta al archivo PDF.
-
-    Returns:
-        str: Texto extraído del PDF.
-    """
     try:
         with open(pdf_path, 'rb') as file:
             reader = PyPDF2.PdfReader(file)
@@ -33,15 +24,6 @@ def extract_text_from_pdf(pdf_path):
         return ""
 
 def cargar_modelo(model_name):
-    """
-    Carga el modelo y el tokenizador de Hugging Face.
-
-    Args:
-        model_name (str): Nombre del modelo en Hugging Face.
-
-    Returns:
-        tuple: Modelo y tokenizador cargados.
-    """
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -55,108 +37,43 @@ def cargar_modelo(model_name):
         return None, None
 
 def definir_preguntas():
-    """
-    Define la lista de preguntas a responder.
-
-    Returns:
-        list: Lista de diccionarios con preguntas.
-    """
-    preguntas = [
-        {
-            'pregunta': 'Hazme un muy breve resumen del documento',
-        },
-        {
-            'pregunta': '¿Cuál es el plazo de implementación?',
-        },
-        {
-            'pregunta': '¿Hay boleta de garantía?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha del periodo de preguntas?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de entrega de propuesta?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?',
-        },
-        {
-            'pregunta': '¿Cuándo es la fecha de firma del contrato?',
-        },
-        {
-            'pregunta': '¿Cuáles son los límites legales de responsabilidad?',
-        },
-        {
-            'pregunta': '¿Hay multas por incumplimiento?',
-        },
-        {
-            'pregunta': '¿Hay marcas asociadas del RFP?',
-        },
-        {
-            'pregunta': '¿Se exigen certificaciones?',
-        },
-        {
-            'pregunta': '¿Hay gente en modalidad remota, teletrabajo?',
-        },
-        {
-            'pregunta': '¿Se permite subcontratar?',
-        },
-        {
-            'pregunta': '¿Cuál es el formato de pago?',
-        },
-        {
-            'pregunta': '¿Cómo se entrega la propuesta y condiciones?',
-        },
-        {
-            'pregunta': '¿Se aceptan condiciones comerciales?',
-        },
+    return [
+        {'pregunta': 'Hazme un muy breve resumen del documento'},
+        {'pregunta': '¿Cuál es el plazo de implementación?'},
+        {'pregunta': '¿Hay boleta de garantía?'},
+        {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
+        {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
+        {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
+        {'pregunta': '¿Hay multas por incumplimiento?'},
+        {'pregunta': '¿Se exigen certificaciones?'},
+        {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
+        {'pregunta': '¿Se permite subcontratar?'},
+        {'pregunta': '¿Cuál es el formato de pago?'},
+        {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
     ]
-    return preguntas
 
 def responder_preguntas(model, tokenizer, texto_documento, preguntas):
-    """
-    Responde a una lista de preguntas basadas en el texto del documento.
-
-    Args:
-        model: Modelo de lenguaje.
-        tokenizer: Tokenizador del modelo.
-        texto_documento (str): Texto extraído del PDF.
-        preguntas (list): Lista de diccionarios con preguntas.
-
-    Returns:
-        list: Lista de diccionarios con respuestas y tiempos.
-    """
     respuestas = []
     for idx, item in enumerate(preguntas, start=1):
         pregunta = item['pregunta']
-        
-        # Crear la entrada del sistema y el usuario
         messages = [
-            {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
-            {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
+            {"role": "system", "content": "You are a helpful and knowledgeable assistant. Think step-by-step."},
+            {"role": "user", "content": f"Based on the following document, answer this question:\n\nDocument:\n{texto_documento}\n\nQuestion: {pregunta}"}
         ]
-
-        
-        # Aplicar la plantilla de chat
         prompt_completo = tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True
         )
-        
-        # Tokenizar el prompt
         model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
-        
-        # Medir el tiempo de respuesta
         start_time = time.time()
-        
         try:
             generated_ids = model.generate(
                 **model_inputs,
-                max_new_tokens=256,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.eos_token_id,
-                temperature=0.2,  # Ajusta la creatividad de la respuesta
+                max_new_tokens=512,
+                temperature=0.2,
                 top_p=0.95,
                 top_k=50
             )
@@ -166,29 +83,16 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
             respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
         except Exception as e:
             respuesta = f"Error al generar la respuesta: {e}"
-        
         end_time = time.time()
-        tiempo_respuesta = end_time - start_time
-        
-        # Almacenar la respuesta
         respuestas.append({
             'pregunta': pregunta,
             'respuesta': respuesta,
-            'tiempo': tiempo_respuesta
+            'tiempo': end_time - start_time
         })
-        
-        # Mostrar progreso
         print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
-    
     return respuestas
 
 def mostrar_respuestas(respuestas):
-    """
-    Muestra las respuestas junto con los tiempos de respuesta.
-
-    Args:
-        respuestas (list): Lista de diccionarios con respuestas y tiempos.
-    """
     for idx, item in enumerate(respuestas, start=1):
         print(Fore.BLUE + f"\n=== Pregunta {idx} ===" + Style.RESET_ALL)
         print(Fore.YELLOW + f"Pregunta: {item['pregunta']}" + Style.RESET_ALL)
@@ -197,34 +101,20 @@ def mostrar_respuestas(respuestas):
         print("-" * 50)
 
 def main():
-    # Inicializa colorama
     init(autoreset=True)
-
-    model_name = "Qwen/Qwen2.5-1.5B-Instruct"  # Asegúrate de que este modelo está disponible
-
-    # Carga el modelo y el tokenizador
+    model_name = "Qwen/QwQ-32B-Preview"
     model, tokenizer = cargar_modelo(model_name)
     if model is None or tokenizer is None:
         return
-
-    # Ruta al documento PDF
-    pdf_path = "./documentos/amsa.pdf"  # Reemplaza con la ruta de tu PDF
-
-    # Extrae el texto del PDF
+    pdf_path = "./documentos/amsa.pdf"
     print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
     texto_documento = extract_text_from_pdf(pdf_path)
     if not texto_documento:
         print(Fore.RED + "No se pudo extraer texto del PDF. Terminando el script." + Style.RESET_ALL)
         return
-
-    # Define las preguntas
     preguntas = definir_preguntas()
-
-    # Responde a las preguntas
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
     respuestas = responder_preguntas(model, tokenizer, texto_documento, preguntas)
-
-    # Muestra las respuestas
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
     mostrar_respuestas(respuestas)
 

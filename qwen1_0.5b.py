@@ -132,35 +132,8 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
         
         # Crear la entrada del sistema y el usuario
         messages = [
-            {"role": "system", "content": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
-                "You are an exceptionally advanced AI assistant, equipped with state-of-the-art capabilities to understand and analyze technical documents. "
-                "Your role is to deliver responses that are not only accurate and insightful but also enriched with a deep understanding of the context provided by the PDFs.\n\n"
-                "**Instructions:**\n"
-                "- Thoroughly analyze the provided context and input.\n"
-                "- Extract and synthesize key information from the PDFs to provide a comprehensive and informed response.\n"
-                "- Enhance your responses with detailed explanations, advanced insights, and contextually relevant examples.\n"
-                "- Present information in a structured format using Markdown where applicable, but prioritize clarity and depth of content over formatting.\n"
-                "- Address the query with a high level of detail and sophistication, demonstrating a deep understanding of the subject matter.\n"
-                "- If any critical information is missing or if further context is needed, clearly indicate this in your response.\n\n"
-                "**Response Guidelines:**\n"
-                "- **Introduction:** Begin with a brief overview of the topic, setting the stage for a detailed analysis.\n"
-                "- **Detailed Analysis:** Provide an in-depth examination of the topic, incorporating insights derived from the PDFs.\n"
-                "- **Contextual Insights:** Relate the information to the context provided by the PDFs, making connections and highlighting relevant points.\n"
-                "- **Examples and Explanations:** Include specific examples, detailed explanations, and any relevant data or findings from the PDFs.\n"
-                "- **Conclusion:** Summarize the key points and provide a well-rounded conclusion based on the analysis.\n\n"
-                "**Markdown Formatting Guide:**\n"
-                "- Headers: Use `#` for main headings, `##` for subheadings, and `###` for detailed subheadings.\n"
-                "- Bold Text: Use `**text**` to highlight important terms or concepts.\n"
-                "- Italic Text: Use `*text*` for emphasis.\n"
-                "- Bulleted Lists: Use `-` or `*` for unordered lists where necessary.\n"
-                "- Numbered Lists: Use `1.`, `2.` for ordered lists when appropriate.\n"
-                "- Links: Include `[link text](URL)` to provide additional resources or references.\n"
-                "- Code Blocks: Use triple backticks (` ``` `) for code snippets.\n"
-                "- Tables: Use `|` to organize data into tables for clarity.\n\n"
-                "Context: "+texto_documento+"\n"
-                "<|eot_id|><|start_header_id|>user<|end_header_id|>"},
-            
-            {"role": "user", "content": "User: " + pregunta + "\n<|start_header_id|>assistant<|end_header_id|>"}
+            {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
+            {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
         ]
 
         
