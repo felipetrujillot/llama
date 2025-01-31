@@ -30,16 +30,10 @@ def cargar_modelo(model_name):
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,
-            device_map="auto",
+            device_map={"cpu": "50GiB", 0: "50GiB"},  # Mantiene parte del modelo en CPU
             offload_folder="offload"
         )
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        device_map = infer_auto_device_map(
-            model,
-            max_memory={0: "50GiB", "cpu": "50GiB"},
-            no_split_module_classes=["DecoderLayer"]
-        )
-        model = dispatch_model(model, device_map=device_map)
         model, hook = cpu_offload_with_hook(model, torch.device("cuda"))
         return model, tokenizer, hook
     except Exception as e:
@@ -83,10 +77,11 @@ def responder_preguntas(model, tokenizer, hook, texto_documento, preguntas):
             tokenize=False,
             add_generation_prompt=True
         )
-        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
+        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to("cpu")  # Mantiene datos en CPU
         start_time = time.time()
         try:
             with torch.no_grad():  # Evita almacenar gradientes innecesarios
+                model_inputs = model_inputs.to("cuda")  # Mueve a GPU solo en la inferencia
                 generated_ids = model.generate(
                     **model_inputs,
                     max_new_tokens=50,  # Reducido para ahorrar memoria
