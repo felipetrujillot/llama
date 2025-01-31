@@ -3,7 +3,7 @@ import torch
 import time
 from colorama import init, Fore, Style
 import PyPDF2
-from accelerate import infer_auto_device_map, dispatch_model
+from accelerate import infer_auto_device_map, dispatch_model, cpu_offload_with_hook
 import gc
 
 def extract_text_from_pdf(pdf_path):
@@ -36,14 +36,15 @@ def cargar_modelo(model_name):
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         device_map = infer_auto_device_map(
             model,
-            max_memory={0: "60GiB", "cpu": "40GiB"},
+            max_memory={0: "50GiB", "cpu": "50GiB"},
             no_split_module_classes=["DecoderLayer"]
         )
         model = dispatch_model(model, device_map=device_map)
-        return model, tokenizer
+        model, hook = cpu_offload_with_hook(model, torch.device("cuda"))
+        return model, tokenizer, hook
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
-        return None, None
+        return None, None, None
 
 def definir_preguntas():
     return [
@@ -63,7 +64,7 @@ def definir_preguntas():
         {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
     ]
 
-def responder_preguntas(model, tokenizer, texto_documento, preguntas):
+def responder_preguntas(model, tokenizer, hook, texto_documento, preguntas):
     respuestas = []
     for idx, item in enumerate(preguntas, start=1):
         gc.collect()
@@ -88,10 +89,10 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
             with torch.no_grad():  # Evita almacenar gradientes innecesarios
                 generated_ids = model.generate(
                     **model_inputs,
-                    max_new_tokens=80,  # Reducido aún más para evitar OOM
+                    max_new_tokens=50,  # Reducido para ahorrar memoria
                     temperature=0.2,
-                    top_p=0.9,
-                    top_k=30
+                    top_p=0.85,
+                    top_k=20
                 )
                 generated_ids = [
                     output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
@@ -99,6 +100,12 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
                 respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
         except Exception as e:
             respuesta = f"Error al generar la respuesta: {e}"
+        
+        del model_inputs, generated_ids  # Libera memoria
+        gc.collect()
+        torch.cuda.empty_cache()
+        hook.offload()  # Mueve el modelo de vuelta a la CPU
+        
         end_time = time.time()
         respuestas.append({
             'pregunta': pregunta,
@@ -112,18 +119,10 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
         print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
     return respuestas
 
-def mostrar_respuestas(respuestas):
-    for idx, item in enumerate(respuestas, start=1):
-        print(Fore.BLUE + f"\n=== Pregunta {idx} ===" + Style.RESET_ALL)
-        print(Fore.YELLOW + f"Pregunta: {item['pregunta']}" + Style.RESET_ALL)
-        print(f"Respuesta: {item['respuesta']}")
-        print(Fore.CYAN + f"Tiempo de respuesta: {item['tiempo']:.2f} segundos" + Style.RESET_ALL)
-        print("-" * 50)
-
 def main():
     init(autoreset=True)
     model_name = "Qwen/QwQ-32B-Preview"
-    model, tokenizer = cargar_modelo(model_name)
+    model, tokenizer, hook = cargar_modelo(model_name)
     if model is None or tokenizer is None:
         return
     pdf_path = "./documentos/amsa.pdf"
@@ -134,7 +133,7 @@ def main():
         return
     preguntas = definir_preguntas()
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
-    respuestas = responder_preguntas(model, tokenizer, texto_documento, preguntas)
+    respuestas = responder_preguntas(model, tokenizer, hook, texto_documento, preguntas)
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
     mostrar_respuestas(respuestas)
 
