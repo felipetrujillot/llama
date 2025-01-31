@@ -33,21 +33,21 @@ def definir_preguntas():
     """
     return [
         {'pregunta': 'Hazme un muy breve resumen del documento'},
-        # {'pregunta': '¿Cuál es el plazo de implementación?'},
-        # {'pregunta': '¿Hay boleta de garantía?'},
-        # {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
-        # {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
-        # {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
-        # {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
-        # {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
-        # {'pregunta': '¿Hay multas por incumplimiento?'},
-        # {'pregunta': '¿Hay marcas asociadas del RFP?'},
-        # {'pregunta': '¿Se exigen certificaciones?'},
-        # {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
-        # {'pregunta': '¿Se permite subcontratar?'},
-        # {'pregunta': '¿Cuál es el formato de pago?'},
-        # {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
-        # {'pregunta': '¿Se aceptan condiciones comerciales?'}
+        {'pregunta': '¿Cuál es el plazo de implementación?'},
+        {'pregunta': '¿Hay boleta de garantía?'},
+        {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
+        {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
+        {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
+        {'pregunta': '¿Hay multas por incumplimiento?'},
+        {'pregunta': '¿Hay marcas asociadas del RFP?'},
+        {'pregunta': '¿Se exigen certificaciones?'},
+        {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
+        {'pregunta': '¿Se permite subcontratar?'},
+        {'pregunta': '¿Cuál es el formato de pago?'},
+        {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
+        {'pregunta': '¿Se aceptan condiciones comerciales?'}
     ]
 
 def configurar_pipeline(model_id):
@@ -138,3 +138,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
