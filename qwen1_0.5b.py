@@ -131,17 +131,10 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
         pregunta = item['pregunta']
         
         # Crear la entrada del sistema y el usuario
-<<<<<<< HEAD
         messages = [
             {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
             {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
         ]
-=======
-        messages = [ 
-                    {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
-                    {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
-                ] 
->>>>>>> 40bce21485d26974e47600cab2e1d37b53debc3c
 
         
         # Aplicar la plantilla de chat
