@@ -4,6 +4,7 @@ import time
 from colorama import init, Fore, Style
 import PyPDF2
 from accelerate import infer_auto_device_map, dispatch_model
+import gc
 
 def extract_text_from_pdf(pdf_path):
     try:
@@ -28,14 +29,14 @@ def cargar_modelo(model_name):
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.bfloat16,  # Cambiado a bfloat16 para mejor compatibilidad en H100
+            torch_dtype=torch.bfloat16,
             device_map="auto",
             offload_folder="offload"
         )
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         device_map = infer_auto_device_map(
             model,
-            max_memory={0: "60GiB", "cpu": "40GiB"},  # Limita el uso de GPU
+            max_memory={0: "60GiB", "cpu": "40GiB"},
             no_split_module_classes=["DecoderLayer"]
         )
         model = dispatch_model(model, device_map=device_map)
@@ -47,24 +48,30 @@ def cargar_modelo(model_name):
 def definir_preguntas():
     return [
         {'pregunta': 'Hazme un muy breve resumen del documento'},
-        # {'pregunta': '¿Cuál es el plazo de implementación?'},
-        # {'pregunta': '¿Hay boleta de garantía?'},
-        # {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
-        # {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
-        # {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
-        # {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
-        # {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
-        # {'pregunta': '¿Hay multas por incumplimiento?'},
-        # {'pregunta': '¿Se exigen certificaciones?'},
-        # {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
-        # {'pregunta': '¿Se permite subcontratar?'},
-        # {'pregunta': '¿Cuál es el formato de pago?'},
-        # {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
+        {'pregunta': '¿Cuál es el plazo de implementación?'},
+        {'pregunta': '¿Hay boleta de garantía?'},
+        {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
+        {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
+        {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
+        {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
+        {'pregunta': '¿Hay multas por incumplimiento?'},
+        {'pregunta': '¿Se exigen certificaciones?'},
+        {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
+        {'pregunta': '¿Se permite subcontratar?'},
+        {'pregunta': '¿Cuál es el formato de pago?'},
+        {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
     ]
 
 def responder_preguntas(model, tokenizer, texto_documento, preguntas):
     respuestas = []
     for idx, item in enumerate(preguntas, start=1):
+        gc.collect()
+        torch.cuda.empty_cache()
+        
+        print(Fore.CYAN + "\nUso de memoria antes de la inferencia:" + Style.RESET_ALL)
+        print(torch.cuda.memory_summary(device=None, abbreviated=False))
+        
         pregunta = item['pregunta']
         messages = [
             {"role": "system", "content": "You are a helpful and knowledgeable assistant. Think step-by-step."},
@@ -78,17 +85,18 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
         model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
         start_time = time.time()
         try:
-            generated_ids = model.generate(
-                **model_inputs,
-                max_new_tokens=100,  # Reducido aún más para evitar OOM
-                temperature=0.2,
-                top_p=0.9,
-                top_k=40
-            )
-            generated_ids = [
-                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-            ]
-            respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+            with torch.no_grad():  # Evita almacenar gradientes innecesarios
+                generated_ids = model.generate(
+                    **model_inputs,
+                    max_new_tokens=80,  # Reducido aún más para evitar OOM
+                    temperature=0.2,
+                    top_p=0.9,
+                    top_k=30
+                )
+                generated_ids = [
+                    output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+                ]
+                respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
         except Exception as e:
             respuesta = f"Error al generar la respuesta: {e}"
         end_time = time.time()
@@ -97,6 +105,10 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
             'respuesta': respuesta,
             'tiempo': end_time - start_time
         })
+        
+        print(Fore.CYAN + "\nUso de memoria después de la inferencia:" + Style.RESET_ALL)
+        print(torch.cuda.memory_summary(device=None, abbreviated=False))
+        
         print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
     return respuestas
 
