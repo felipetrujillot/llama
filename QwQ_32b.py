@@ -47,19 +47,19 @@ def cargar_modelo(model_name):
 def definir_preguntas():
     return [
         {'pregunta': 'Hazme un muy breve resumen del documento'},
-        {'pregunta': '¿Cuál es el plazo de implementación?'},
-        {'pregunta': '¿Hay boleta de garantía?'},
-        {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
-        {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
-        {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
-        {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
-        {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
-        {'pregunta': '¿Hay multas por incumplimiento?'},
-        {'pregunta': '¿Se exigen certificaciones?'},
-        {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
-        {'pregunta': '¿Se permite subcontratar?'},
-        {'pregunta': '¿Cuál es el formato de pago?'},
-        {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
+        # {'pregunta': '¿Cuál es el plazo de implementación?'},
+        # {'pregunta': '¿Hay boleta de garantía?'},
+        # {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
+        # {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
+        # {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
+        # {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
+        # {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
+        # {'pregunta': '¿Hay multas por incumplimiento?'},
+        # {'pregunta': '¿Se exigen certificaciones?'},
+        # {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
+        # {'pregunta': '¿Se permite subcontratar?'},
+        # {'pregunta': '¿Cuál es el formato de pago?'},
+        # {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
     ]
 
 def responder_preguntas(model, tokenizer, texto_documento, preguntas):
