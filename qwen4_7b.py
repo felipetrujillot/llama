@@ -1,8 +1,8 @@
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-from transformers import pipeline
-import PyPDF2
 import time
 from colorama import init, Fore, Style
+import PyPDF2
 
 def extract_text_from_pdf(pdf_path):
     """
@@ -32,6 +32,28 @@ def extract_text_from_pdf(pdf_path):
         print(Fore.RED + f"Error al extraer texto del PDF: {e}" + Style.RESET_ALL)
         return ""
 
+def cargar_modelo(model_name):
+    """
+    Carga el modelo y el tokenizador de Hugging Face.
+
+    Args:
+        model_name (str): Nombre del modelo en Hugging Face.
+
+    Returns:
+        tuple: Modelo y tokenizador cargados.
+    """
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype="auto",
+            device_map="auto"
+        )
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        return model, tokenizer
+    except Exception as e:
+        print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
+        return None, None
+
 def definir_preguntas():
     """
     Define la lista de preguntas a responder.
@@ -40,53 +62,64 @@ def definir_preguntas():
         list: Lista de diccionarios con preguntas.
     """
     preguntas = [
-        {'pregunta': 'Hazme un muy breve resumen del documento'},
-        {'pregunta': '¿Cuál es el plazo de implementación?'},
-        {'pregunta': '¿Hay boleta de garantía?'},
-        {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
-        {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
-        {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
-        {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
-        {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
-        {'pregunta': '¿Hay multas por incumplimiento?'},
-        {'pregunta': '¿Hay marcas asociadas del RFP?'},
-        {'pregunta': '¿Se exigen certificaciones?'},
-        {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
-        {'pregunta': '¿Se permite subcontratar?'},
-        {'pregunta': '¿Cuál es el formato de pago?'},
-        {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
-        {'pregunta': '¿Se aceptan condiciones comerciales?'},
+        {
+            'pregunta': 'Hazme un muy breve resumen del documento',
+        },
+        {
+            'pregunta': '¿Cuál es el plazo de implementación?',
+        },
+        {
+            'pregunta': '¿Hay boleta de garantía?',
+        },
+        {
+            'pregunta': '¿Cuándo es la fecha del periodo de preguntas?',
+        },
+        {
+            'pregunta': '¿Cuándo es la fecha de entrega de propuesta?',
+        },
+        {
+            'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?',
+        },
+        {
+            'pregunta': '¿Cuándo es la fecha de firma del contrato?',
+        },
+        {
+            'pregunta': '¿Cuáles son los límites legales de responsabilidad?',
+        },
+        {
+            'pregunta': '¿Hay multas por incumplimiento?',
+        },
+        {
+            'pregunta': '¿Hay marcas asociadas del RFP?',
+        },
+        {
+            'pregunta': '¿Se exigen certificaciones?',
+        },
+        {
+            'pregunta': '¿Hay gente en modalidad remota, teletrabajo?',
+        },
+        {
+            'pregunta': '¿Se permite subcontratar?',
+        },
+        {
+            'pregunta': '¿Cuál es el formato de pago?',
+        },
+        {
+            'pregunta': '¿Cómo se entrega la propuesta y condiciones?',
+        },
+        {
+            'pregunta': '¿Se aceptan condiciones comerciales?',
+        },
     ]
     return preguntas
 
-def configurar_pipeline(model_id):
-    """
-    Configura el pipeline de generación de texto.
-
-    Args:
-        model_id (str): Identificador del modelo en Hugging Face.
-
-    Returns:
-        pipeline: Pipeline de generación de texto.
-    """
-    try:
-        pipe = pipeline(
-            "text-generation",
-            model=model_id,
-            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto",
-        )
-        return pipe
-    except Exception as e:
-        print(Fore.RED + f"Error al configurar el pipeline con el modelo '{model_id}': {e}" + Style.RESET_ALL)
-        return None
-
-def responder_preguntas(pipe, texto_documento, preguntas):
+def responder_preguntas(model, tokenizer, texto_documento, preguntas):
     """
     Responde a una lista de preguntas basadas en el texto del documento.
 
     Args:
-        pipe (pipeline): Pipeline de generación de texto.
+        model: Modelo de lenguaje.
+        tokenizer: Tokenizador del modelo.
         texto_documento (str): Texto extraído del PDF.
         preguntas (list): Lista de diccionarios con preguntas.
 
@@ -96,46 +129,57 @@ def responder_preguntas(pipe, texto_documento, preguntas):
     respuestas = []
     for idx, item in enumerate(preguntas, start=1):
         pregunta = item['pregunta']
-
-        # Crear el prompt combinando el mensaje del sistema y la pregunta
-        prompt = [
+        
+        # Crear la entrada del sistema y el usuario
+        messages = [
             {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
             {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
         ]
 
+        
+        # Aplicar la plantilla de chat
+        prompt_completo = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        
+        # Tokenizar el prompt
+        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(model.device)
+        
         # Medir el tiempo de respuesta
         start_time = time.time()
-
+        
         try:
-            # Generar la respuesta
-            outputs = pipe(
-                prompt,
+            generated_ids = model.generate(
+                **model_inputs,
                 max_new_tokens=256,
-                temperature=0.2,  # Baja temperatura para respuestas más determinísticas
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.eos_token_id,
+                temperature=0.2,  # Ajusta la creatividad de la respuesta
                 top_p=0.95,
-                top_k=50,
-                eos_token_id=pipe.tokenizer.eos_token_id if hasattr(pipe.tokenizer, 'eos_token_id') else None,
-                pad_token_id=pipe.tokenizer.eos_token_id if hasattr(pipe.tokenizer, 'eos_token_id') else None,
+                top_k=50
             )
-            # Obtener el texto generado y eliminar el prompt
-            respuesta_completa = outputs[0]['generated_text']
-            respuesta = respuesta_completa[len(prompt):].strip()
+            generated_ids = [
+                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+            ]
+            respuesta = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
         except Exception as e:
             respuesta = f"Error al generar la respuesta: {e}"
-
+        
         end_time = time.time()
         tiempo_respuesta = end_time - start_time
-
+        
         # Almacenar la respuesta
         respuestas.append({
             'pregunta': pregunta,
             'respuesta': respuesta,
             'tiempo': tiempo_respuesta
         })
-
+        
         # Mostrar progreso
         print(Fore.GREEN + f"Pregunta {idx}/{len(preguntas)} procesada." + Style.RESET_ALL)
-
+    
     return respuestas
 
 def mostrar_respuestas(respuestas):
@@ -156,14 +200,11 @@ def main():
     # Inicializa colorama
     init(autoreset=True)
 
-    # Identificador del modelo en Hugging Face
-    model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"  # Reemplaza con el modelo correcto si es necesario
+    model_name = "Qwen/Qwen2.5-7B-Instruct-1M"  # Asegúrate de que este modelo está disponible
 
-    # Configura el pipeline
-    print(Fore.MAGENTA + "Configurando el pipeline de generación de texto..." + Style.RESET_ALL)
-    pipe = configurar_pipeline(model_id)
-    if pipe is None:
-        print(Fore.RED + "No se pudo configurar el pipeline. Terminando el script." + Style.RESET_ALL)
+    # Carga el modelo y el tokenizador
+    model, tokenizer = cargar_modelo(model_name)
+    if model is None or tokenizer is None:
         return
 
     # Ruta al documento PDF
@@ -181,7 +222,7 @@ def main():
 
     # Responde a las preguntas
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
-    respuestas = responder_preguntas(pipe, texto_documento, preguntas)
+    respuestas = responder_preguntas(model, tokenizer, texto_documento, preguntas)
 
     # Muestra las respuestas
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
