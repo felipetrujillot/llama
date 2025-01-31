@@ -33,21 +33,21 @@ def definir_preguntas():
     """
     return [
         {'pregunta': 'Hazme un muy breve resumen del documento'},
-        {'pregunta': '¿Cuál es el plazo de implementación?'},
-        {'pregunta': '¿Hay boleta de garantía?'},
-        {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
-        {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
-        {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
-        {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
-        {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
-        {'pregunta': '¿Hay multas por incumplimiento?'},
-        {'pregunta': '¿Hay marcas asociadas del RFP?'},
-        {'pregunta': '¿Se exigen certificaciones?'},
-        {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
-        {'pregunta': '¿Se permite subcontratar?'},
-        {'pregunta': '¿Cuál es el formato de pago?'},
-        {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
-        {'pregunta': '¿Se aceptan condiciones comerciales?'}
+        # {'pregunta': '¿Cuál es el plazo de implementación?'},
+        # {'pregunta': '¿Hay boleta de garantía?'},
+        # {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
+        # {'pregunta': '¿Cuándo es la fecha de entrega de propuesta?'},
+        # {'pregunta': '¿Cuándo es la fecha de respuesta de la propuesta?'},
+        # {'pregunta': '¿Cuándo es la fecha de firma del contrato?'},
+        # {'pregunta': '¿Cuáles son los límites legales de responsabilidad?'},
+        # {'pregunta': '¿Hay multas por incumplimiento?'},
+        # {'pregunta': '¿Hay marcas asociadas del RFP?'},
+        # {'pregunta': '¿Se exigen certificaciones?'},
+        # {'pregunta': '¿Hay gente en modalidad remota, teletrabajo?'},
+        # {'pregunta': '¿Se permite subcontratar?'},
+        # {'pregunta': '¿Cuál es el formato de pago?'},
+        # {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
+        # {'pregunta': '¿Se aceptan condiciones comerciales?'}
     ]
 
 def configurar_pipeline(model_id):
@@ -99,7 +99,7 @@ def responder_preguntas(pipe, texto_documento, preguntas):
 
 def mostrar_respuestas(respuestas):
     """
-    Muestra las respuestas y las copia al portapapeles.
+    Muestra las respuestas y las copia al portapapeles o las guarda en un archivo si falla.
     """
     texto_completo = ""
     for idx, item in enumerate(respuestas, start=1):
@@ -108,10 +108,13 @@ def mostrar_respuestas(respuestas):
         texto_completo += f"Respuesta: {item['respuesta']}\n"
         texto_completo += f"Tiempo de respuesta: {item['tiempo']:.2f} segundos\n"
         texto_completo += "-" * 50 + "\n"
-    
-    # Copiar al portapapeles
-    pyperclip.copy(texto_completo)
-    print(Fore.MAGENTA + "\nLas respuestas han sido copiadas al portapapeles." + Style.RESET_ALL)
+    try:
+        pyperclip.copy(texto_completo)
+        print(Fore.MAGENTA + "\nLas respuestas han sido copiadas al portapapeles." + Style.RESET_ALL)
+    except pyperclip.PyperclipException:
+        with open("respuestas.txt", "w", encoding="utf-8") as f:
+            f.write(texto_completo)
+        print(Fore.MAGENTA + "Las respuestas han sido guardadas en 'respuestas.txt' porque no se pudo copiar al portapapeles." + Style.RESET_ALL)
 
 def main():
     init(autoreset=True)
