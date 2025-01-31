@@ -3,15 +3,7 @@ import torch
 import time
 from colorama import init, Fore, Style
 import PyPDF2
-from accelerate import dispatch_model
 
-device_map = infer_auto_device_map(
-    model,
-    max_memory={0: "78GiB", "cpu": "32GiB"},  # Limita el uso de GPU y asigna parte a CPU
-    no_split_module_classes=["DecoderLayer"]  # Evita dividir capas críticas
-)
-
-model = dispatch_model(model, device_map=device_map)
 def extract_text_from_pdf(pdf_path):
     try:
         with open(pdf_path, 'rb') as file:
