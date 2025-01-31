@@ -27,18 +27,18 @@ def extract_text_from_pdf(pdf_path):
 
 def cargar_modelo(model_name):
     try:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,
-            device_map={"cpu": "50GiB", 0: "50GiB"},  # Mantiene parte del modelo en CPU
-            offload_folder="offload"
-        )
+            device_map="auto"
+        ).to(device)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model, hook = cpu_offload_with_hook(model, torch.device("cuda"))
-        return model, tokenizer, hook
+        model.embed_tokens = model.embed_tokens.to(device)  # Asigna un dispositivo a los embeddings
+        return model, tokenizer
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
-        return None, None, None
+        return None, None
 
 def definir_preguntas():
     return [
@@ -58,7 +58,8 @@ def definir_preguntas():
         # {'pregunta': '¿Cómo se entrega la propuesta y condiciones?'},
     ]
 
-def responder_preguntas(model, tokenizer, hook, texto_documento, preguntas):
+def responder_preguntas(model, tokenizer, texto_documento, preguntas):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     respuestas = []
     for idx, item in enumerate(preguntas, start=1):
         gc.collect()
@@ -77,11 +78,10 @@ def responder_preguntas(model, tokenizer, hook, texto_documento, preguntas):
             tokenize=False,
             add_generation_prompt=True
         )
-        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to("cpu")  # Mantiene datos en CPU
+        model_inputs = tokenizer([prompt_completo], return_tensors="pt").to(device)
         start_time = time.time()
         try:
-            with torch.no_grad():  # Evita almacenar gradientes innecesarios
-                model_inputs = model_inputs.to("cuda")  # Mueve a GPU solo en la inferencia
+            with torch.no_grad():
                 generated_ids = model.generate(
                     **model_inputs,
                     max_new_tokens=50,  # Reducido para ahorrar memoria
@@ -99,7 +99,6 @@ def responder_preguntas(model, tokenizer, hook, texto_documento, preguntas):
         del model_inputs, generated_ids  # Libera memoria
         gc.collect()
         torch.cuda.empty_cache()
-        hook.offload()  # Mueve el modelo de vuelta a la CPU
         
         end_time = time.time()
         respuestas.append({
@@ -117,7 +116,7 @@ def responder_preguntas(model, tokenizer, hook, texto_documento, preguntas):
 def main():
     init(autoreset=True)
     model_name = "Qwen/QwQ-32B-Preview"
-    model, tokenizer, hook = cargar_modelo(model_name)
+    model, tokenizer = cargar_modelo(model_name)
     if model is None or tokenizer is None:
         return
     pdf_path = "./documentos/amsa.pdf"
@@ -128,7 +127,7 @@ def main():
         return
     preguntas = definir_preguntas()
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
-    respuestas = responder_preguntas(model, tokenizer, hook, texto_documento, preguntas)
+    respuestas = responder_preguntas(model, tokenizer, texto_documento, preguntas)
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
     mostrar_respuestas(respuestas)
 
