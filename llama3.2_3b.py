@@ -98,10 +98,11 @@ def responder_preguntas(pipe, texto_documento, preguntas):
         pregunta = item['pregunta']
 
         # Crear el prompt combinando el mensaje del sistema y la pregunta
-        prompt = [
-            {"role": "system", "content": "Eres Amalia, creada por Entel. Eres una asistente útil y precisa."},
-            {"role": "user", "content": f"Basándote en el siguiente documento, responde a la siguiente pregunta.\n\nDocumento:\n{texto_documento}\n\nPregunta: {pregunta}"}
-        ]
+        prompt = (
+            "Eres Amalia, creada por Entel. Eres una asistente útil y precisa.\n\n"
+            f"Documento:\n{texto_documento}\n\n"
+            f"Pregunta: {pregunta}\nRespuesta:"
+        )
 
         # Medir el tiempo de respuesta
         start_time = time.time()
