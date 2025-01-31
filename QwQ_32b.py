@@ -3,6 +3,7 @@ import torch
 import time
 from colorama import init, Fore, Style
 import PyPDF2
+from accelerate import infer_auto_device_map, dispatch_model
 
 def extract_text_from_pdf(pdf_path):
     try:
@@ -27,10 +28,17 @@ def cargar_modelo(model_name):
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype="auto",
-            device_map="auto"
+            torch_dtype=torch.bfloat16,  # Cambiado a bfloat16 para mejor compatibilidad en H100
+            device_map="auto",
+            offload_folder="offload"
         )
         tokenizer = AutoTokenizer.from_pretrained(model_name)
+        device_map = infer_auto_device_map(
+            model,
+            max_memory={0: "60GiB", "cpu": "40GiB"},  # Limita el uso de GPU
+            no_split_module_classes=["DecoderLayer"]
+        )
+        model = dispatch_model(model, device_map=device_map)
         return model, tokenizer
     except Exception as e:
         print(Fore.RED + f"Error al cargar el modelo '{model_name}': {e}" + Style.RESET_ALL)
@@ -72,10 +80,10 @@ def responder_preguntas(model, tokenizer, texto_documento, preguntas):
         try:
             generated_ids = model.generate(
                 **model_inputs,
-                max_new_tokens=512,
+                max_new_tokens=100,  # Reducido aún más para evitar OOM
                 temperature=0.2,
-                top_p=0.95,
-                top_k=50
+                top_p=0.9,
+                top_k=40
             )
             generated_ids = [
                 output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
