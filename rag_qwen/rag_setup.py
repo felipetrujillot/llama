@@ -19,9 +19,9 @@ def setup_rag():
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     texts = text_splitter.split_documents(documents)
 
-    # Generar embeddings
-    print("Generando embeddings...")
-    embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # Generar embeddings con intfloat/multilingual-e5-large
+    print("Generando embeddings con intfloat/multilingual-e5-large...")
+    embedding_model = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
 
     # Crear base de datos vectorial con ChromaDB
     print("Creando base de datos ChromaDB...")

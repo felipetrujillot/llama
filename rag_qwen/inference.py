@@ -9,7 +9,7 @@ init(autoreset=True)
 
 # Configuración inicial
 CHROMA_DB_PATH = "./chroma_db"
-MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct-1M"
 
 # Preguntas a responder
 QUESTIONS = [
@@ -40,9 +40,9 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto"
 )
 
-# Cargar ChromaDB
+# Cargar ChromaDB con el nuevo modelo de embeddings
 print("Cargando base de datos ChromaDB...")
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+embedding_model = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
 vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedding_model)
 
 def generate_response(prompt, context):
