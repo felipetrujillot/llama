@@ -7,9 +7,6 @@ export DEBIAN_FRONTEND=noninteractive
 # Actualizar el sistema y dependencias esenciales
 apt-get update && apt-get install -y wget git
 
-# Clonar el repositorio
-git clone https://github.com/felipetrujillot/llama.git
-
 # Descargar Anaconda
 wget https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh -O /tmp/anaconda.sh
 
