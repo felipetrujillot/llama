@@ -48,8 +48,17 @@ vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedd
 def generate_response(prompt, context):
     # Crear el mensaje con el contexto explícito
     messages = [
-        {"role": "system", "content": "Eres un asistente experto. Usa el contexto proporcionado para responder la pregunta."},
-        {"role": "user", "content": f"Pregunta: {prompt}\n\nContexto:\n{context}"}
+        {"role": "system", "content": """
+Eres un asistente experto diseñado para responder preguntas basadas exclusivamente en el contexto proporcionado.
+Si la información solicitada no está presente en el contexto, NO INVENTES ni DEDUZCAS respuestas. 
+En su lugar, indica claramente que no se encontró la información y, si es posible, proporciona sugerencias generales o información relacionada que pueda ser útil.
+"""},
+        {"role": "user", "content": f"""
+Pregunta: {prompt}
+
+Contexto:
+{context}
+"""}
     ]
     text = tokenizer.apply_chat_template(
         messages,
