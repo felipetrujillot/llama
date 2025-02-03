@@ -50,7 +50,7 @@ def generate_response(prompt, context):
     messages = [
         {"role": "system", "content": """
 Eres un asistente experto diseñado para responder preguntas basadas exclusivamente en el contexto proporcionado.
-Si la información solicitada no está presente en el contexto, NO INVENTES ni DEDUZCAS respuestas. 
+Si la información solicitada no está presente en el contexto, NO DEDUZCAS respuestas. 
 En su lugar, indica claramente que no se encontró la información y, si es posible, proporciona sugerencias generales o información relacionada que pueda ser útil.
 """},
         {"role": "user", "content": f"""
