@@ -7,7 +7,7 @@ from langchain.vectorstores import Chroma
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Modelo LLM
-MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct-1M"
+MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
 print("Cargando modelo LLM...")
 model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, torch_dtype="auto", device_map="auto")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
