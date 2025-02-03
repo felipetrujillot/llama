@@ -1,33 +1,29 @@
 #!/bin/bash
 
-# Configuración inicial
-set -e  # Detener el script si hay errores
-export DEBIAN_FRONTEND=noninteractive
+set -e  # Detener ejecución si ocurre un error
 
-# Actualizar el sistema y dependencias esenciales
-apt-get update && apt-get install -y wget git
+# Descargar e instalar Anaconda
+echo "Descargando Anaconda..."
+wget -q https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh -O /tmp/anaconda.sh
 
-# Descargar Anaconda
-wget https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh -O /tmp/anaconda.sh
-
-# Instalar Anaconda en modo silencioso
+echo "Instalando Anaconda..."
 bash /tmp/anaconda.sh -b -p /root/anaconda3
 
 # Agregar Anaconda al PATH
 export PATH="/root/anaconda3/bin:$PATH"
 
-# Crear el entorno Conda
+# Activar Anaconda y crear el entorno
+echo "Configurando entorno Conda..."
 source /root/anaconda3/bin/activate
 conda create -n ia python=3.12 -y
+source activate ia  # Opción alternativa a `conda activate ia`
 
-# Activar el entorno
-source activate ia
-
-# Instalar dependencias
+# Instalar paquetes
+echo "Instalando dependencias..."
 pip install accelerate
 pip install huggingface_hub
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 pip install transformers colorama
 pip install PyPDF2
 
-echo "Instalación completada. Para activar el entorno, use: source /root/anaconda3/bin/activate && conda activate ia"
+echo "Configuración completada. Usa 'conda activate ia' para entrar al entorno."
