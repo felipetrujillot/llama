@@ -46,9 +46,10 @@ embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-Mi
 vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedding_model)
 
 def generate_response(prompt, context):
+    # Crear el mensaje con el contexto explícito
     messages = [
-        {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
-        {"role": "user", "content": f"{prompt}\n\nContexto:\n{context}"}
+        {"role": "system", "content": "Eres un asistente experto. Usa el contexto proporcionado para responder la pregunta."},
+        {"role": "user", "content": f"Pregunta: {prompt}\n\nContexto:\n{context}"}
     ]
     text = tokenizer.apply_chat_template(
         messages,
@@ -75,6 +76,10 @@ def main():
         # Recuperar contexto relevante del RAG
         docs = vectorstore.similarity_search(query, k=3)
         context = "\n".join([doc.page_content for doc in docs])
+
+        # Mostrar el contexto recuperado (para depuración)
+        print(Fore.CYAN + "Contexto recuperado:")
+        print(context[:500] + "...")  # Mostrar solo los primeros 500 caracteres
 
         # Generar respuesta con Qwen 2.5
         response = generate_response(query, context)
