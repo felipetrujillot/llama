@@ -1,3 +1,4 @@
+import os
 import torch
 from transformers import pipeline
 import PyPDF2
@@ -18,14 +19,37 @@ def extract_text_from_pdf(pdf_path):
                 if page_text:
                     text += page_text + "\n"
                 else:
-                    print(Fore.YELLOW + f"Advertencia: No se pudo extraer texto de la página {page_num}." + Style.RESET_ALL)
+                    print(Fore.YELLOW + f"Advertencia: No se pudo extraer texto de la página {page_num} en {pdf_path}." + Style.RESET_ALL)
         return text
-    except FileNotFoundError:
-        print(Fore.RED + f"Error: El archivo PDF en la ruta '{pdf_path}' no se encontró." + Style.RESET_ALL)
-        return ""
     except Exception as e:
-        print(Fore.RED + f"Error al extraer texto del PDF: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Error al extraer texto del PDF {pdf_path}: {e}" + Style.RESET_ALL)
         return ""
+
+def obtener_texto_de_todos_los_pdfs(directorio):
+    """
+    Obtiene y concatena el texto de todos los archivos PDF en un directorio.
+
+    Args:
+        directorio (str): Ruta del directorio que contiene los PDFs.
+
+    Returns:
+        str: Texto concatenado de todos los PDFs.
+    """
+    texto_completo = ""
+    archivos_pdf = [f for f in os.listdir(directorio) if f.lower().endswith(".pdf")]
+
+    if not archivos_pdf:
+        print(Fore.RED + "No se encontraron archivos PDF en el directorio." + Style.RESET_ALL)
+        return ""
+
+    for archivo in archivos_pdf:
+        ruta_pdf = os.path.join(directorio, archivo)
+        print(Fore.CYAN + f"Procesando archivo: {archivo}" + Style.RESET_ALL)
+        texto_extraido = extract_text_from_pdf(ruta_pdf)
+        if texto_extraido:
+            texto_completo += texto_extraido + "\n"
+
+    return texto_completo
 
 def definir_preguntas():
     """
@@ -74,7 +98,7 @@ def responder_preguntas(pipe, texto_documento, preguntas):
         pregunta = item['pregunta']
         prompt = (
             "Eres Amalia, creada por Entel. Eres una asistente útil y precisa.\n\n"
-            f"Documento:\n{texto_documento}\n\n"
+            f"Documentos:\n{texto_documento}\n\n"
             f"Pregunta: {pregunta}\nRespuesta:"
         )
         start_time = time.time()
@@ -119,23 +143,29 @@ def mostrar_respuestas(respuestas):
 def main():
     init(autoreset=True)
     model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+
     print(Fore.MAGENTA + "Configurando el pipeline de generación de texto..." + Style.RESET_ALL)
     pipe = configurar_pipeline(model_id)
     if pipe is None:
         print(Fore.RED + "No se pudo configurar el pipeline. Terminando el script." + Style.RESET_ALL)
         return
-    pdf_path = "./documentos/amsa.pdf"
-    print(Fore.MAGENTA + "Extrayendo texto del PDF..." + Style.RESET_ALL)
-    texto_documento = extract_text_from_pdf(pdf_path)
+
+    directorio_pdfs = "./documentos/"
+
+    print(Fore.MAGENTA + "Extrayendo texto de todos los PDFs en el directorio..." + Style.RESET_ALL)
+    texto_documento = obtener_texto_de_todos_los_pdfs(directorio_pdfs)
+
     if not texto_documento:
-        print(Fore.RED + "No se pudo extraer texto del PDF. Terminando el script." + Style.RESET_ALL)
+        print(Fore.RED + "No se pudo extraer texto de los PDFs. Terminando el script." + Style.RESET_ALL)
         return
+
     preguntas = definir_preguntas()
+
     print(Fore.MAGENTA + "Generando respuestas a las preguntas..." + Style.RESET_ALL)
     respuestas = responder_preguntas(pipe, texto_documento, preguntas)
+
     print(Fore.MAGENTA + "\nMostrando todas las respuestas:" + Style.RESET_ALL)
     mostrar_respuestas(respuestas)
 
 if __name__ == "__main__":
     main()
-
