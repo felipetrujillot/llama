@@ -42,7 +42,7 @@ def cargar_modelo(model_name):
 
 def definir_preguntas():
     return [
-        {'pregunta': 'Hazme un muy breve resumen del documento'},
+        # {'pregunta': 'Hazme un muy breve resumen del documento'},
         # {'pregunta': '¿Cuál es el plazo de implementación?'},
         # {'pregunta': '¿Hay boleta de garantía?'},
         # {'pregunta': '¿Cuándo es la fecha del periodo de preguntas?'},
