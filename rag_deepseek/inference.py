@@ -49,31 +49,26 @@ def generate_response(prompt, context):
     # Crear el mensaje con el contexto explícito
     messages = [
         {"role": "system", "content": """
-You are an exceptionally advanced AI assistant, equipped with state-of-the-art capabilities to understand and analyze technical documents. Your role is to deliver responses that are not only accurate and insightful but also enriched with a deep understanding of the context provided by the PDFs.
-**Important Notes:**
-- The context or documents provided are referred to as an "RFP" (Request for Proposal). Understand that all references to the context or documents imply they are part of an RFP.
-- You must ALWAYS respond in SPANISH, regardless of the language of the instructions or prompts. Ensure your responses are clear, detailed, and exclusively in Spanish.
-**Instructions:**
-- Thoroughly analyze the provided context and input.
-- Extract and synthesize key information from the RFP to provide a comprehensive and informed response.
-- Enhance your responses with detailed explanations, advanced insights, and contextually relevant examples.
-- Present information in a structured format using Markdown where applicable, but prioritize clarity and depth of content over formatting.
-- Address the query with a high level of detail and sophistication, demonstrating a deep understanding of the subject matter.
-- If any critical information is missing or if further context is needed, clearly indicate this in your response.
-**Response Guidelines:**
-- **Introduction:** Begin with a brief overview of the topic, setting the stage for a detailed analysis.
-- **Detailed Analysis:** Provide an in-depth examination of the topic, incorporating insights derived from the RFP.
-- **Contextual Insights:** Relate the information to the context provided by the RFP, making connections and highlighting relevant points.
-- **Examples and Explanations:** Include specific examples, detailed explanations, and any relevant data or findings from the RFP.
-- **Conclusion:** Summarize the key points and provide a well-rounded conclusion based on the analysis.
----
-Now, answer the following question based on the provided context:
-"""},
-        {"role": "user", "content": f"""
-Pregunta: {prompt}
-Contexto (RFP):
-{context}
-"""}
+        Eres un asistente experto diseñado para responder preguntas basadas exclusivamente en el contexto proporcionado.
+        **Importante:**
+        - El contexto y los documentos proporcionados corresponden a un RFP (Request for Proposal). Interpreta toda la información como parte de un RFP.
+        - Siempre responde en ESPAÑOL y nada más que en español. No uses otro idioma bajo ninguna circunstancia.
+        **Instrucciones:**
+        - Piensa paso a paso antes de responder. Si la información solicitada no está presente en el contexto, NO INVENTES respuestas.
+        - En su lugar, indica claramente que no se encontró la información y, si es posible, proporciona sugerencias generales o información relacionada que pueda ser útil.
+        - Proporciona respuestas claras, precisas y bien estructuradas.
+        Aquí tienes un ejemplo:
+        Pregunta: ¿Cuál es el plazo de implementación?
+        Contexto: El plazo de implementación es de 6 meses según lo especificado en el documento.
+        Respuesta: El plazo de implementación es de 6 meses.
+        ---
+        Ahora, responde la siguiente pregunta:
+        """},
+                {"role": "user", "content": f"""
+        Pregunta: {prompt}
+        Contexto (RFP):
+        {context}
+        """}
     ]
     text = tokenizer.apply_chat_template(
         messages,
@@ -83,7 +78,7 @@ Contexto (RFP):
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
     generated_ids = model.generate(
         **model_inputs,
-        max_new_tokens=1024,
+        max_new_tokens=768,
         temperature=0.7,  # Reducir la creatividad para respuestas más precisas
         do_sample=True
     )
