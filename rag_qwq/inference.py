@@ -52,6 +52,12 @@ def generate_response(prompt, context):
 Eres un asistente experto diseñado para responder preguntas basadas exclusivamente en el contexto proporcionado.
 Piensa paso a paso antes de responder. Si la información solicitada no está presente en el contexto, NO INVENTES ni DEDUZCAS respuestas. 
 En su lugar, indica claramente que no se encontró la información y, si es posible, proporciona sugerencias generales o información relacionada que pueda ser útil.
+Aquí tienes un ejemplo:
+Pregunta: ¿Cuál es el plazo de implementación?
+Contexto: El plazo de implementación es de 6 meses según lo especificado en el documento.
+Respuesta: El plazo de implementación es de 6 meses.
+---
+Ahora, responde la siguiente pregunta:
 """},
         {"role": "user", "content": f"""
 Pregunta: {prompt}
@@ -68,7 +74,9 @@ Contexto:
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
     generated_ids = model.generate(
         **model_inputs,
-        max_new_tokens=512
+        max_new_tokens=512,
+        temperature=0.7,  # Reducir la creatividad para respuestas más precisas
+        do_sample=True
     )
     generated_ids = [
         output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
@@ -90,8 +98,13 @@ def main():
         print(Fore.CYAN + "Contexto recuperado:")
         print(context[:500] + "...")  # Mostrar solo los primeros 500 caracteres
 
-        # Generar respuesta con Qwen/QwQ-32B-Preview
-        response = generate_response(query, context)
+        # Verificar si el contexto es relevante
+        if not context.strip() or "no encontrado" in context.lower():
+            response = "No se encontró información relevante en el contexto proporcionado."
+        else:
+            # Generar respuesta con Qwen/QwQ-32B-Preview
+            response = generate_response(query, context)
+
         elapsed_time = time.time() - start_time
 
         # Mostrar respuesta y tiempo en colores
