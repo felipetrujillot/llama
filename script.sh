@@ -25,7 +25,8 @@ pip install huggingface_hub
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 pip install transformers colorama
 pip install PyPDF2
-
+pip install langchain chromadb sentence-transformers transformers
+pip install -U langchain-community
 #instalando nvtop
 apt update && apt install -y nvtop
 
