@@ -26,4 +26,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 pip install transformers colorama
 pip install PyPDF2
 
+#instalando nvtop
+apt update && apt install -y nvtop
+
 echo "Configuración completada. Usa 'conda activate ia' para entrar al entorno."
