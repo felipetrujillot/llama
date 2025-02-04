@@ -34,6 +34,11 @@ QUESTIONS = [
 # Cargar modelo DeepSeek-R1-Distill-Qwen-14B
 print("Cargando modelo DeepSeek-R1-Distill-Qwen-14B...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+# Asignar el eos_token como pad_token si no está definido
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
     torch_dtype="auto",
@@ -50,13 +55,8 @@ def generate_response(prompt, context):
     messages = [
         {"role": "system", "content": """
         Eres un asistente experto diseñado para responder preguntas basadas exclusivamente en el contexto proporcionado.
-        **Importante:**
-        - El contexto y los documentos proporcionados corresponden a un RFP (Request for Proposal). Interpreta toda la información como parte de un RFP.
-        - Siempre responde en ESPAÑOL y nada más que en español. No uses otro idioma bajo ninguna circunstancia.
-        **Instrucciones:**
-        - Piensa paso a paso antes de responder. Si la información solicitada no está presente en el contexto, NO INVENTES respuestas.
-        - En su lugar, indica claramente que no se encontró la información y, si es posible, proporciona sugerencias generales o información relacionada que pueda ser útil.
-        - Proporciona respuestas claras, precisas y bien estructuradas.
+        Piensa paso a paso antes de responder. Si la información solicitada no está presente en el contexto, NO INVENTES respuestas. 
+        En su lugar, indica claramente que no se encontró la información y, si es posible, proporciona sugerencias generales o información relacionada que pueda ser útil.
         Aquí tienes un ejemplo:
         Pregunta: ¿Cuál es el plazo de implementación?
         Contexto: El plazo de implementación es de 6 meses según lo especificado en el documento.
@@ -64,7 +64,7 @@ def generate_response(prompt, context):
         ---
         Ahora, responde la siguiente pregunta:
         """},
-                {"role": "user", "content": f"""
+        {"role": "user", "content": f"""
         Pregunta: {prompt}
         Contexto (RFP):
         {context}
