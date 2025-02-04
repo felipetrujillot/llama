@@ -9,7 +9,7 @@ init(autoreset=True)
 
 # Configuración inicial
 CHROMA_DB_PATH = "./chroma_db"
-MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct-1M"
+MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct-1M"
 
 # Preguntas a responder
 QUESTIONS = [
