@@ -83,7 +83,7 @@ Contexto (RFP):
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
     generated_ids = model.generate(
         **model_inputs,
-        max_new_tokens=512,
+        max_new_tokens=1024,
         temperature=0.7,  # Reducir la creatividad para respuestas más precisas
         do_sample=True
     )
