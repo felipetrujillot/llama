@@ -32,5 +32,5 @@ pip install fastapi uvicorn
 
 #instalando nvtop
 apt update && apt install -y nvtop
-source /root/anaconda3/bin/activate
+
 echo "Configuración completada. Usa 'conda activate ia' para entrar al entorno."
