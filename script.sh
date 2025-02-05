@@ -28,6 +28,8 @@ pip install PyPDF2
 pip install langchain chromadb sentence-transformers transformers
 pip install -U langchain-community
 pip install pypdf
+pip install fastapi uvicorn
+
 #instalando nvtop
 apt update && apt install -y nvtop
 source /root/anaconda3/bin/activate
