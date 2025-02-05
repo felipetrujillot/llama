@@ -30,5 +30,5 @@ pip install -U langchain-community
 pip install pypdf
 #instalando nvtop
 apt update && apt install -y nvtop
-
+source /root/anaconda3/bin/activate
 echo "Configuración completada. Usa 'conda activate ia' para entrar al entorno."
