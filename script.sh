@@ -16,7 +16,7 @@ export PATH="/root/anaconda3/bin:$PATH"
 echo "Configurando entorno Conda..."
 source /root/anaconda3/bin/activate
 conda create -n ia python=3.12 -y
-source activate ia  # Opción alternativa a `conda activate ia`
+conda activate ia  # Opción alternativa a `conda activate ia`
 
 # Instalar paquetes
 echo "Instalando dependencias..."

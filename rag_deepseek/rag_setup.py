@@ -16,7 +16,7 @@ def setup_rag():
 
     # Dividir documentos en fragmentos más pequeños
     print("Dividiendo documentos en fragmentos...")
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     texts = text_splitter.split_documents(documents)
 
     # Generar embeddings con intfloat/multilingual-e5-large
