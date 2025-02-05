@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 from langchain.vectorstores import Chroma
 from langchain.embeddings import HuggingFaceEmbeddings
 from fastapi.responses import StreamingResponse
 import asyncio
-import time
+import torch
+import threading
 
 # Inicializar FastAPI
 app = FastAPI()
@@ -14,14 +15,15 @@ app = FastAPI()
 CHROMA_DB_PATH = "./chroma_db"
 MODEL_NAME = "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"  # Modelo de razonamiento
 
-# Cargar modelo DeepSeek-R1-Distill-Qwen-14B
+# Cargar modelo
 print("Cargando modelo DeepSeek-R1-Distill-Qwen-14B...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
+
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
-    torch_dtype="auto",
+    torch_dtype=torch.float16,  # Usa float16 si tu GPU lo soporta
     device_map="auto"
 )
 
@@ -34,9 +36,9 @@ vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedd
 class QuestionRequest(BaseModel):
     pregunta: str
 
-# Función para generar respuestas en tiempo real
+# Función para generar respuestas en tiempo real usando `TextIteratorStreamer`
 async def generate_response_stream(prompt, context):
-    # Crear el mensaje con el contexto explícito
+    # Crear mensaje con el contexto explícito
     messages = [
         {"role": "system", "content": """
         Eres un asistente experto diseñado para responder preguntas basadas exclusivamente en el contexto proporcionado.
@@ -49,23 +51,31 @@ async def generate_response_stream(prompt, context):
         {context}
         """}
     ]
-    text = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True
-    )
+
+    # Convertir mensaje en input para el modelo
+    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
-    # Generar tokens uno por uno
-    for token in model.generate(
-        **model_inputs,
-        max_new_tokens=512,
-        temperature=0.7,
-        do_sample=True,
-        streamer=None  # Usamos un generador manual
-    ):
-        decoded_token = tokenizer.decode(token, skip_special_tokens=True)
-        yield decoded_token  # Enviamos cada token generado
+    # Configurar `TextIteratorStreamer` para emisión en tiempo real
+    streamer = TextIteratorStreamer(tokenizer, skip_special_tokens=True, decode_kwargs={"skip_special_tokens": True})
+
+    # Ejecutar la generación en un hilo separado para no bloquear la API
+    thread = threading.Thread(
+        target=model.generate,
+        kwargs={
+            "input_ids": model_inputs["input_ids"],
+            "attention_mask": model_inputs["attention_mask"],
+            "max_new_tokens": 512,
+            "temperature": 0.7,
+            "do_sample": True,
+            "streamer": streamer
+        }
+    )
+    thread.start()
+
+    # Enviar tokens en streaming
+    async for token in streamer:
+        yield token
         await asyncio.sleep(0.01)  # Pequeña pausa para evitar sobrecarga
 
 # Endpoint para enviar preguntas con streaming
