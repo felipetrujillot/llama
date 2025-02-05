@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from fastapi.responses import StreamingResponse
 import asyncio
 import torch
@@ -13,7 +13,7 @@ app = FastAPI()
 
 # Configuración inicial
 CHROMA_DB_PATH = "./chroma_db"
-MODEL_NAME = "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"  # Modelo de razonamiento
+MODEL_NAME = "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
 
 # Cargar modelo
 print("Cargando modelo DeepSeek-R1-Distill-Qwen-14B...")
@@ -23,7 +23,7 @@ if tokenizer.pad_token is None:
 
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
-    torch_dtype=torch.float16,  # Usa float16 si tu GPU lo soporta
+    torch_dtype=torch.float16,  # Usa float16 si la GPU lo permite
     device_map="auto"
 )
 
@@ -36,30 +36,22 @@ vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedd
 class QuestionRequest(BaseModel):
     pregunta: str
 
-# Función para generar respuestas en tiempo real usando `TextIteratorStreamer`
+# **Corrección del streaming**
 async def generate_response_stream(prompt, context):
-    # Crear mensaje con el contexto explícito
     messages = [
         {"role": "system", "content": """
         Eres un asistente experto diseñado para responder preguntas basadas exclusivamente en el contexto proporcionado.
-        Piensa paso a paso antes de responder. Si la información solicitada no está presente en el contexto, NO INVENTES respuestas. 
-        En su lugar, indica claramente que no se encontró la información y, si es posible, proporciona sugerencias generales o información relacionada que pueda ser útil.
+        No inventes respuestas. Si la información no está en el contexto, indica que no se encontró.
         """},
-        {"role": "user", "content": f"""
-        Pregunta: {prompt}
-        Contexto (RFP):
-        {context}
-        """}
+        {"role": "user", "content": f"Pregunta: {prompt}\nContexto:\n{context}"}
     ]
 
-    # Convertir mensaje en input para el modelo
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
-    # Configurar `TextIteratorStreamer` para emisión en tiempo real
     streamer = TextIteratorStreamer(tokenizer, skip_special_tokens=True, decode_kwargs={"skip_special_tokens": True})
 
-    # Ejecutar la generación en un hilo separado para no bloquear la API
+    # Iniciar la generación en un hilo separado
     thread = threading.Thread(
         target=model.generate,
         kwargs={
@@ -73,10 +65,10 @@ async def generate_response_stream(prompt, context):
     )
     thread.start()
 
-    # Enviar tokens en streaming
-    async for token in streamer:
+    # **Corrección: Usa `asyncio.to_thread()` para no bloquear FastAPI**
+    for token in await asyncio.to_thread(lambda: list(streamer)):
         yield token
-        await asyncio.sleep(0.01)  # Pequeña pausa para evitar sobrecarga
+        await asyncio.sleep(0.01)
 
 # Endpoint para enviar preguntas con streaming
 @app.post("/pregunta-stream/")
@@ -93,7 +85,6 @@ async def responder_pregunta_stream(request: QuestionRequest):
             yield "No se encontró información relevante en el contexto proporcionado."
         return StreamingResponse(no_context_stream(), media_type="text/plain")
 
-    # Devolver la respuesta en tiempo real
     return StreamingResponse(
         generate_response_stream(query, context),
         media_type="text/plain"
