@@ -20,7 +20,6 @@ print("Cargando modelo DeepSeek-R1-Distill-Qwen-14B...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
-
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
     torch_dtype=torch.float16,  # Usa float16 si la GPU lo permite
@@ -36,7 +35,7 @@ vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedd
 class QuestionRequest(BaseModel):
     pregunta: str
 
-# **Corrección del streaming**
+# Función para generar respuestas en tiempo real
 async def generate_response_stream(prompt, context):
     messages = [
         {"role": "system", "content": """
@@ -45,10 +44,8 @@ async def generate_response_stream(prompt, context):
         """},
         {"role": "user", "content": f"Pregunta: {prompt}\nContexto:\n{context}"}
     ]
-
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-
     streamer = TextIteratorStreamer(tokenizer, skip_special_tokens=True, decode_kwargs={"skip_special_tokens": True})
 
     # Iniciar la generación en un hilo separado
@@ -65,9 +62,13 @@ async def generate_response_stream(prompt, context):
     )
     thread.start()
 
-    # **Corrección: Usa `asyncio.to_thread()` para no bloquear FastAPI**
+    # Filtrar y enviar solo la respuesta final
+    response_buffer = ""
     for token in await asyncio.to_thread(lambda: list(streamer)):
-        yield token
+        response_buffer += token
+        # Solo enviamos tokens que forman parte de la respuesta final
+        if not any(tag in response_buffer for tag in ["<think>", "< | User | >", "< | Assistant | >"]):
+            yield token
         await asyncio.sleep(0.01)
 
 # Endpoint para enviar preguntas con streaming
