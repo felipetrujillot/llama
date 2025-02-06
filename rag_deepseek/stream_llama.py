@@ -58,12 +58,16 @@ async def generate_response_stream(prompt, context):
     )
     thread.start()
     
-    async for token in asyncio.to_thread(lambda: streamer):
-        response_start = token.find("<think>")
-        if response_start != -1:
-            token = token[response_start:]
-        yield token
-        await asyncio.sleep(0.01)
+    response_text = ""
+    for token in await asyncio.to_thread(lambda: list(streamer)):
+        response_text += token
+    
+    # Filtrar la respuesta para eliminar el prompt y contexto
+    response_start = response_text.find("<think>")
+    if response_start != -1:
+        response_text = response_text[response_start:]
+    
+    yield response_text
 
 @app.post("/pregunta-stream/")
 async def responder_pregunta_stream(request: QuestionRequest):
