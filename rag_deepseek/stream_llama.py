@@ -50,7 +50,7 @@ async def generate_response_stream(prompt, context):
         kwargs={
             "input_ids": model_inputs["input_ids"],
             "attention_mask": model_inputs["attention_mask"],
-            "max_new_tokens": 512,
+            "max_new_tokens": 1024,
             "temperature": 0.7,
             "do_sample": True,
             "streamer": streamer
