@@ -61,6 +61,7 @@ async def generate_response_stream(prompt, context):
     try:
         for token in streamer:
             yield token  # Enviar el token al cliente
+            await asyncio.sleep(0.01)  # Retraso artificial para forzar el envío inmediato
     finally:
         # Asegurarse de que la conexión se cierre correctamente
         yield ""  # Enviar un chunk vacío al final
