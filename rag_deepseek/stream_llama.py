@@ -59,9 +59,25 @@ async def generate_response_stream(prompt, context):
     thread.start()
     
     try:
+        # Bandera para detectar el inicio de la respuesta generada
+        response_started = False
+        accumulated_text = ""
+
         for token in streamer:
-            yield token  # Enviar el token al cliente
-            await asyncio.sleep(0.01)  # Retraso artificial para forzar el envío inmediato
+            # Decodificar el token
+            decoded_token = tokenizer.decode(token, skip_special_tokens=True)
+            accumulated_text += decoded_token
+
+            # Detectar el inicio de la respuesta generada
+            if not response_started and "<think>" in accumulated_text:
+                response_started = True
+                # Eliminar todo el contenido previo a <think>
+                accumulated_text = accumulated_text[accumulated_text.index("<think>"):]
+
+            # Solo enviar tokens si la respuesta ha comenzado
+            if response_started:
+                yield decoded_token
+                await asyncio.sleep(0.01)  # Retraso artificial para forzar el envío inmediato
     finally:
         # Asegurarse de que la conexión se cierre correctamente
         yield ""  # Enviar un chunk vacío al final
