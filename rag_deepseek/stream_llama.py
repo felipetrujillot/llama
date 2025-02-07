@@ -35,7 +35,7 @@ vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedd
 class QuestionRequest(BaseModel):
     pregunta: str
 
-# Corrección del streaming
+# Función para generar tokens uno por uno
 async def generate_response_stream(prompt, context):
     messages = [
         {"role": "system", "content": "Eres un asistente experto que responde preguntas basadas exclusivamente en el contexto proporcionado."},
@@ -58,16 +58,9 @@ async def generate_response_stream(prompt, context):
     )
     thread.start()
     
-    response_text = ""
-    for token in await asyncio.to_thread(lambda: list(streamer)):
-        response_text += token
-    
-    # Filtrar la respuesta para eliminar el prompt y contexto
-    response_start = response_text.find("<think>")
-    if response_start != -1:
-        response_text = response_text[response_start:]
-    
-    yield response_text
+    # Enviar cada token inmediatamente
+    async for token in await asyncio.to_thread(lambda: list(streamer)):
+        yield token  # Enviar el token al cliente
 
 @app.post("/pregunta-stream/")
 async def responder_pregunta_stream(request: QuestionRequest):
