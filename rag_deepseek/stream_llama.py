@@ -58,9 +58,12 @@ async def generate_response_stream(prompt, context):
     )
     thread.start()
     
-    # Enviar cada token inmediatamente
-    async for token in await asyncio.to_thread(lambda: list(streamer)):
-        yield token  # Enviar el token al cliente
+    try:
+        for token in streamer:
+            yield token  # Enviar el token al cliente
+    finally:
+        # Asegurarse de que la conexión se cierre correctamente
+        yield ""  # Enviar un chunk vacío al final
 
 @app.post("/pregunta-stream/")
 async def responder_pregunta_stream(request: QuestionRequest):
