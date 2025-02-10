@@ -38,7 +38,7 @@ class QuestionRequest(BaseModel):
 # Función para generar tokens uno por uno
 async def generate_response_stream(prompt, context):
     messages = [
-        {"role": "system", "content": "Eres un asistente experto que responde preguntas basadas exclusivamente en el contexto proporcionado."},
+        {"role": "system", "content": "Eres un asistente experto que responde preguntas basadas exclusivamente en el contexto proporcionado. Debes responder todo en español nunca otro idioma."},
         {"role": "user", "content": f"Pregunta: {prompt}\nContexto:\n{context}"}
     ]
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
