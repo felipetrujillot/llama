@@ -13,7 +13,8 @@ app = FastAPI()
 
 # Configuración inicial
 CHROMA_DB_PATH = "./chroma_db"
-MODEL_NAME = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+# MODEL_NAME = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+MODEL_NAME = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
 
 # Cargar modelo
 print("Cargando modelo...")
