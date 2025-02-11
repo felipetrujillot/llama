@@ -57,22 +57,6 @@ async def generate_response_stream(prompt, context):
             - **Examples and Explanations:** Include specific examples, detailed explanations, and any relevant data or findings from the PDFs.
             - **Conclusion:** Summarize the key points and provide a well-rounded conclusion based on the analysis.
          
-            **Example Output:**
-
-            ** Overview **
-            The provided PDFs offer a comprehensive overview of ...
-
-            ** In-Depth Analysis **
-            Based on the documents, the key findings include ...
-
-            ** Contextual Insights **
-            The analysis reveals that ...
-
-            ** Examples and Explanations **
-            For instance, document A highlights ...
-
-            ** Conclusion **
-            In conclusion, the analysis demonstrates ...
 
             **Markdown Formatting Guide:**
             - Headers: Use `#` for main headings, `##` for subheadings, and `###` for detailed subheadings.
@@ -106,7 +90,7 @@ async def generate_response_stream(prompt, context):
             "input_ids": model_inputs["input_ids"],
             "attention_mask": model_inputs["attention_mask"],
             "max_new_tokens": 1024,
-            "temperature": 0.7,
+            "temperature": 0.9,
             "do_sample": True,
             "streamer": streamer
         }
