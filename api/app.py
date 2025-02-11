@@ -56,6 +56,23 @@ async def generate_response_stream(prompt, context):
             - **Contextual Insights:** Relate the information to the context provided by the PDFs, making connections and highlighting relevant points.
             - **Examples and Explanations:** Include specific examples, detailed explanations, and any relevant data or findings from the PDFs.
             - **Conclusion:** Summarize the key points and provide a well-rounded conclusion based on the analysis.
+         
+            **Example Output:**
+
+            ** Overview **
+            The provided PDFs offer a comprehensive overview of ...
+
+            ** In-Depth Analysis **
+            Based on the documents, the key findings include ...
+
+            ** Contextual Insights **
+            The analysis reveals that ...
+
+            ** Examples and Explanations **
+            For instance, document A highlights ...
+
+            ** Conclusion **
+            In conclusion, the analysis demonstrates ...
 
             **Markdown Formatting Guide:**
             - Headers: Use `#` for main headings, `##` for subheadings, and `###` for detailed subheadings.
