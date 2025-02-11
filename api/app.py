@@ -106,7 +106,7 @@ async def generate_response_stream(prompt, context):
             "input_ids": model_inputs["input_ids"],
             "attention_mask": model_inputs["attention_mask"],
             "max_new_tokens": 1024,
-            "temperature": 0.9,
+            "temperature": 0.7,
             "do_sample": True,
             "streamer": streamer
         }
