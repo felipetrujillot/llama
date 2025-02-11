@@ -28,7 +28,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 # Cargar ChromaDB con el modelo de embeddings
 print("Cargando base de datos ChromaDB...")
-embedding_model = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
+embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")  # Modelo compatible con dimensión 384
 vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedding_model)
 
 # Modelo de entrada para la API
@@ -76,7 +76,6 @@ The document provides a thorough analysis of ...
 The analysis reveals ...
 ## Conclusion
 The summary highlights the significance of ...
-
 Context: 
 """ + context},
         {"role": "user", "content": f"User: {prompt}"},
