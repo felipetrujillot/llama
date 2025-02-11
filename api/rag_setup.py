@@ -1,7 +1,7 @@
 import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings  # Cambio aquí
 from langchain_community.vectorstores import Chroma
 
 # Configuración inicial
@@ -26,7 +26,6 @@ def setup_rag():
     # Crear base de datos vectorial con ChromaDB
     print("Creando base de datos ChromaDB...")
     vectorstore = Chroma.from_documents(texts, embedding_model, persist_directory=CHROMA_DB_PATH)
-    vectorstore.persist()
     print(f"Base de datos ChromaDB creada en: {CHROMA_DB_PATH}")
 
 if __name__ == "__main__":
