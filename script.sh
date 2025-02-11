@@ -29,6 +29,8 @@ pip install langchain chromadb sentence-transformers transformers
 pip install -U langchain-community
 pip install pypdf
 pip install fastapi uvicorn
+pip install cryptography
+pip install --upgrade cryptography
 
 #instalando nvtop
 apt update && apt install -y nvtop
