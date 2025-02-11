@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_chroma import Chroma  # Nueva importación para Chroma
+from langchain_huggingface import HuggingFaceEmbeddings  # Nueva importación para embeddings
 from fastapi.responses import StreamingResponse
 import asyncio
 import torch
@@ -28,7 +28,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 # Cargar ChromaDB con el modelo de embeddings
 print("Cargando base de datos ChromaDB...")
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")  # Modelo compatible con dimensión 384
+embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedding_model)
 
 # Modelo de entrada para la API
@@ -37,7 +37,6 @@ class QuestionRequest(BaseModel):
 
 # Función para generar tokens uno por uno
 async def generate_response_stream(prompt, context):
-    # Nuevo prompt basado en el que proporcionaste
     messages = [
         {"role": "system", "content": r"""
             You are an exceptionally advanced AI assistant, equipped with state-of-the-art capabilities to understand and analyze technical documents. Your role is to deliver responses that are not only accurate and insightful but also enriched with a deep understanding of the context provided by the PDFs.
@@ -101,7 +100,6 @@ async def generate_response_stream(prompt, context):
             yield token  # Enviar el token al cliente
             await asyncio.sleep(0.01)  # Retraso artificial para forzar el envío inmediato
     finally:
-        # Asegurarse de que la conexión se cierre correctamente
         yield ""  # Enviar un chunk vacío al final
 
 @app.post("/pregunta-stream/")
