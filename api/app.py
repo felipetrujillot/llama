@@ -40,7 +40,7 @@ class QuestionRequest(BaseModel):
 async def generate_response_stream(prompt, context):
     messages = [
         {"role": "system", "content": r"""
-            You are an exceptionally advanced AI assistant, equipped with state-of-the-art capabilities to understand and analyze technical documents. Your role is to deliver responses that are not only accurate and insightful but also enriched with a deep understanding of the context provided by the documents (propuesta), Always respond in Spanish, regardless of the input language.
+            You are an advanced AI assistant designed to generate responses solely based on the provided context, without adding external information. Your role is to deliver responses that are not only accurate and insightful but also enriched with a deep understanding of the context provided by the documents (propuesta), Always respond in Spanish, regardless of the input language.
 
             **Instructions:**
             - Thoroughly analyze the provided context and input.
