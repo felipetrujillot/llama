@@ -40,7 +40,7 @@ class QuestionRequest(BaseModel):
 async def generate_response_stream(prompt, context):
     messages = [
         {"role": "system", "content": r"""
-            You are an advanced AI assistant designed to generate responses solely based on the provided context, Always respond in spanish, regardless of the input language.
+            You are an advanced AI assistant designed to generate responses only based on the provided context, Always respond in spanish, regardless of the input language.
             If the response is short, ensure it remains concise and precise. If the information is textual, present it briefly while maintaining clarity.
          
             **Instructions:**
@@ -76,7 +76,7 @@ async def generate_response_stream(prompt, context):
             | Data 1     | Data 2     | Data 3     |
             | Data 4     | Data 5     | Data 6     |
 
-            """ + context},
+            """ +"\nContext:"+ context},
         {"role": "user", "content": f"User: {prompt}"},
         {"role": "assistant", "content": ""}
     ]
