@@ -12,6 +12,7 @@ bash /tmp/anaconda.sh -b -p /root/anaconda3
 # Agregar Anaconda al PATH
 export PATH="/root/anaconda3/bin:$PATH"
 
+
 # Activar Anaconda y crear el entorno
 echo "Configurando entorno Conda..."
 source /root/anaconda3/bin/activate
@@ -29,8 +30,8 @@ pip install langchain chromadb sentence-transformers transformers
 pip install -U langchain-community
 pip install pypdf
 pip install fastapi uvicorn
-pip install cryptography
-pip install --upgrade cryptography
+pip install -U langchain-huggingface
+pip install -U langchain-chroma
 
 #instalando nvtop
 apt update && apt install -y nvtop
