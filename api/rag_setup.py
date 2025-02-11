@@ -1,8 +1,8 @@
 import os
-from langchain.document_loaders import PyPDFDirectoryLoader
+from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 
 # Configuración inicial
 DOCUMENTS_DIR = "./documentos"
@@ -19,9 +19,9 @@ def setup_rag():
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     texts = text_splitter.split_documents(documents)
 
-    # Generar embeddings con intfloat/multilingual-e5-large
-    print("Generando embeddings con intfloat/multilingual-e5-large...")
-    embedding_model = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
+    # Generar embeddings con sentence-transformers/all-MiniLM-L6-v2
+    print("Generando embeddings con sentence-transformers/all-MiniLM-L6-v2...")
+    embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
     # Crear base de datos vectorial con ChromaDB
     print("Creando base de datos ChromaDB...")
