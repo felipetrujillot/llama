@@ -11,7 +11,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Configuración del sistema RAG.")
     parser.add_argument("--documents_dir", default="./documentos", help="Directorio de documentos PDF.")
     parser.add_argument("--chroma_db_path", default="./chroma_db", help="Ruta de la base de datos ChromaDB.")
-    parser.add_argument("--chunk_size", type=int, default=2500, help="Tamaño de los fragmentos de texto.")
+    parser.add_argument("--chunk_size", type=int, default=2000, help="Tamaño de los fragmentos de texto.")
     parser.add_argument("--chunk_overlap", type=int, default=200, help="Superposición entre fragmentos.")
     return parser.parse_args()
 
