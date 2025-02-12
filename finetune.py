@@ -21,9 +21,13 @@ print(dataset["train"].column_names)
 
 # 4. Preprocesar el dataset
 def preprocess_function(examples):
-    # Cambia 'text' por el nombre de la columna correcta
+    # Concatenar las columnas 'question', 'choices', y 'explanation' en un solo texto
+    texts = [
+        f"Question: {q}\nChoices: {c}\nExplanation: {e}"
+        for q, c, e in zip(examples['question'], examples['choices'], examples['explanation'])
+    ]
     return tokenizer(
-        examples['text'],  # Asegúrate de que 'text' es la columna correcta en tu dataset
+        texts,
         truncation=True,
         padding='max_length',
         max_length=512
