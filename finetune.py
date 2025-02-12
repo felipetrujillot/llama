@@ -15,9 +15,11 @@ model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
 # 3. Cargar el dataset
 dataset = load_dataset(DATASET_NAME)
 
-# Inspeccionar las columnas del dataset
+# Inspeccionar las columnas y divisiones del dataset
 print("Columnas del dataset:")
 print(dataset["train"].column_names)
+print("Divisiones del dataset:")
+print(list(dataset.keys()))
 
 # 4. Preprocesar el dataset
 def preprocess_function(examples):
@@ -37,8 +39,17 @@ def preprocess_function(examples):
 tokenized_datasets = dataset.map(preprocess_function, batched=True)
 
 # 5. Dividir el dataset en entrenamiento y validación
-train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(100))  # 100 ejemplos para entrenamiento
-eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(20))     # 20 ejemplos para validación
+if "test" in tokenized_datasets:
+    train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(100))  # 100 ejemplos para entrenamiento
+    eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(20))     # 20 ejemplos para validación
+elif "validation" in tokenized_datasets:
+    train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(100))  # 100 ejemplos para entrenamiento
+    eval_dataset = tokenized_datasets["validation"].shuffle(seed=42).select(range(20))  # 20 ejemplos para validación
+else:
+    # Dividir manualmente si no hay una división de prueba o validación
+    split_dataset = tokenized_datasets["train"].train_test_split(test_size=0.1)  # 10% para validación
+    train_dataset = split_dataset["train"].shuffle(seed=42).select(range(100))
+    eval_dataset = split_dataset["test"].shuffle(seed=42).select(range(20))
 
 # 6. Definir los argumentos de entrenamiento
 training_args = TrainingArguments(
