@@ -28,12 +28,16 @@ def preprocess_function(examples):
         f"Question: {q}\nChoices: {c}\nExplanation: {e}"
         for q, c, e in zip(examples['question'], examples['choices'], examples['explanation'])
     ]
-    return tokenizer(
+    # Tokenizar los textos
+    tokenized = tokenizer(
         texts,
         truncation=True,
         padding='max_length',
         max_length=512
     )
+    # Agregar las etiquetas (labels son iguales a input_ids)
+    tokenized["labels"] = tokenized["input_ids"].copy()
+    return tokenized
 
 # Aplicar la función de preprocesamiento
 tokenized_datasets = dataset.map(preprocess_function, batched=True)
