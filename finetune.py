@@ -12,8 +12,16 @@ OUTPUT_DIR = "./qwen-finetuned"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
 
-# 3. Cargar y preparar el dataset
+# 3. Cargar el dataset
+dataset = load_dataset(DATASET_NAME)
+
+# Inspeccionar las columnas del dataset
+print("Columnas del dataset:")
+print(dataset["train"].column_names)
+
+# 4. Preprocesar el dataset
 def preprocess_function(examples):
+    # Cambia 'text' por el nombre de la columna correcta
     return tokenizer(
         examples['text'],  # Asegúrate de que 'text' es la columna correcta en tu dataset
         truncation=True,
@@ -21,31 +29,30 @@ def preprocess_function(examples):
         max_length=512
     )
 
-dataset = load_dataset(DATASET_NAME)  # Carga el dataset desde Hugging Face
+# Aplicar la función de preprocesamiento
 tokenized_datasets = dataset.map(preprocess_function, batched=True)
 
-# 4. Dividir el dataset en entrenamiento y validación
-# Para pruebas rápidas, seleccionamos un subconjunto pequeño del dataset
+# 5. Dividir el dataset en entrenamiento y validación
 train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(100))  # 100 ejemplos para entrenamiento
 eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(20))     # 20 ejemplos para validación
 
-# 5. Definir los argumentos de entrenamiento
+# 6. Definir los argumentos de entrenamiento
 training_args = TrainingArguments(
     output_dir=OUTPUT_DIR,
     evaluation_strategy="epoch",
     learning_rate=2e-5,
-    per_device_train_batch_size=4,  # Tamaño de lote para entrenamiento
-    per_device_eval_batch_size=4,   # Tamaño de lote para validación
-    num_train_epochs=2,             # Reducimos a 2 épocas para pruebas iniciales
+    per_device_train_batch_size=4,
+    per_device_eval_batch_size=4,
+    num_train_epochs=2,
     weight_decay=0.01,
     save_strategy="epoch",
     logging_dir=f"{OUTPUT_DIR}/logs",
     logging_steps=10,
-    fp16=torch.cuda.is_available(),  # Usa FP16 si hay GPU disponible
-    push_to_hub=False,               # Cambiar a True si quieres subir el modelo a Hugging Face Hub
+    fp16=torch.cuda.is_available(),
+    push_to_hub=False,
 )
 
-# 6. Crear el Trainer
+# 7. Crear el Trainer
 trainer = Trainer(
     model=model,
     args=training_args,
@@ -54,11 +61,11 @@ trainer = Trainer(
     tokenizer=tokenizer,
 )
 
-# 7. Entrenar el modelo
+# 8. Entrenar el modelo
 print("Iniciando entrenamiento...")
 trainer.train()
 
-# 8. Guardar el modelo finetuneado
+# 9. Guardar el modelo finetuneado
 trainer.save_model(OUTPUT_DIR)
 tokenizer.save_pretrained(OUTPUT_DIR)
 print(f"Modelo finetuneado guardado en {OUTPUT_DIR}")
