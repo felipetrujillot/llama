@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
-from langchain_community.vectorstores import Chroma  # Import actualizado
-from langchain_huggingface import HuggingFaceEmbeddings  # Import actualizado
+from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from fastapi.responses import StreamingResponse
 import asyncio
 import torch
