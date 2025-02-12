@@ -89,7 +89,8 @@ async def generate_response_stream(prompt, context):
             "max_new_tokens": 1024,
             "temperature": 0.7,
             "do_sample": True,
-            "streamer": streamer
+            "streamer": streamer,
+            "eos_token_id": [128001, 128009]
         }
     )
     thread.start()
