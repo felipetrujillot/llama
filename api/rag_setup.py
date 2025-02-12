@@ -29,7 +29,7 @@ def load_or_create_vectorstore(texts, embedding_model, chroma_db_path):
     else:
         print("Creando nueva base de datos ChromaDB...")
         vectorstore = Chroma.from_documents(texts, embedding_model, persist_directory=chroma_db_path)
-        vectorstore.persist()
+        # Eliminamos la llamada a persist(), ya no es necesaria
         return vectorstore
 
 def setup_rag(documents_dir, chroma_db_path, chunk_size, chunk_overlap):
